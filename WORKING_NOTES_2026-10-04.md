@@ -1,0 +1,1 @@
+Temporary marker before UI/UX repair. Safe rollback point is commit 0f8ba86edcfb3f67f02fbc3006a71fe3cfa5affe.
