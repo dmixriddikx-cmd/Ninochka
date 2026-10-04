@@ -1,4 +1,4 @@
-import * as core from './core.js';
+import * as core from './corefix.js';
 
 const app=document.querySelector('#app'), modal=document.querySelector('#modal'), toast=document.querySelector('#toast');
 const STORE='ninochka-v4';
