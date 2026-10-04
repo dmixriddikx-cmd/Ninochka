@@ -30,7 +30,7 @@ jobs:
           rm -rf _site
           mkdir -p _site
           cp index.html styles.css core.js corefix.js _site/
-          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js > _site/app.js
+          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js > _site/app.js
           touch _site/.nojekyll
 
           node --check _site/app.js
@@ -45,6 +45,7 @@ jobs:
           grep -q 'notranslate' _site/index.html
           grep -q 'ninochka-v4' _site/app.js
           grep -q "corefix.js" _site/app.js
+          grep -q "closed-week" _site/app.js
           echo "Ninochka V4 build verified"
 
       - name: Setup Pages
