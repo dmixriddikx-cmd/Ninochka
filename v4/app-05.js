@@ -1,7 +1,7 @@
 // V4 UX hotfixes: week progression, duplicate-test cleanup, and submit feedback.
-function decorateWeekStrip(){
+function firstOpenWeekId(){\n  const mm=m();\n  return mm?.weeks?.find(x=>x.status!=='closed')?.id ?? mm?.weeks?.at(-1)?.id ?? 1;\n}\nfunction decorateWeekStrip(){
   const mm=m();
-  const firstOpen=mm?.weeks?.find(x=>x.status!=='closed')?.id ?? mm?.weeks?.at(-1)?.id;
+  const firstOpen=firstOpenWeekId();
   document.querySelectorAll('.week-chip[data-week]').forEach(btn=>{
     const id=Number(btn.dataset.week), wk=mm?.weeks?.find(x=>x.id===id);
     btn.classList.toggle('closed-week',wk?.status==='closed');
@@ -71,3 +71,10 @@ try{
 }catch(err){console.warn('cleanup skipped',err)}
 
 decorateWeekStrip();
+
+// Whenever the Week tab is entered, open the first unfinished week, not the last viewed closed week.
+document.addEventListener('click',e=>{
+  const tab=e.target.closest('[data-tab="week"]');
+  if(!tab)return;
+  view.week=firstOpenWeekId();
+},true);
