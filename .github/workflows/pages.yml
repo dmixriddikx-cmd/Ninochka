@@ -24,7 +24,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Rebuild static app
+      - name: Rebuild and patch static app
         shell: bash
         run: |
           python3 - <<'PY'
@@ -52,6 +52,25 @@ jobs:
           (out / 'index.html').write_bytes(html)
           print(f'Rebuilt index.html: {len(html)} bytes')
           PY
+
+          python3 tools/patch_site.py _site/index.html
+          python3 tools/patch_release_v2.py _site/index.html
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path('_site/index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:[^>]*)>(.*?)</script>',html,re.S)
+          if len(scripts)!=1:
+              raise SystemExit(f'Expected one inline app script, got {len(scripts)}')
+          Path('_site/app-check.js').write_text(scripts[0],encoding='utf-8')
+          if 'tutorialPreview' not in html or 'onboarding-preview-v2' not in html:
+              raise SystemExit('Onboarding release patch is missing')
+          print(f'Patched index.html: {len(html.encode("utf-8"))} bytes')
+          PY
+          node --check _site/app-check.js
+          rm _site/app-check.js
+
           cp -R assets _site/assets
           touch _site/.nojekyll
 
