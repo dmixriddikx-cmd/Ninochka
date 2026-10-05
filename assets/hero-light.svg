@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 320" role="img" aria-label="Светлая уютная комната с котом у окна">
+<defs>
+  <linearGradient id="room" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff8f1"/><stop offset=".58" stop-color="#f7e4dc"/><stop offset="1" stop-color="#e9c8bd"/></linearGradient>
+  <linearGradient id="bed" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f5dfd6"/><stop offset="1" stop-color="#d9b9b1"/></linearGradient>
+  <radialGradient id="sun"><stop stop-color="#fff9cf"/><stop offset=".65" stop-color="#ffd9a8"/><stop offset="1" stop-color="#efb49c" stop-opacity=".1"/></radialGradient>
+</defs>
+<rect width="900" height="320" rx="36" fill="url(#room)"/>
+<circle cx="703" cy="76" r="54" fill="url(#sun)"/>
+<g opacity=".78" fill="#d7b99c"><rect x="55" y="106" width="47" height="80" rx="4"/><rect x="118" y="90" width="56" height="96" rx="4"/><rect x="191" y="122" width="39" height="64" rx="4"/><rect x="744" y="110" width="45" height="76" rx="4"/><rect x="802" y="92" width="49" height="94" rx="4"/></g>
+<g fill="#fff2e7"><rect x="58" y="119" width="41" height="67"/><rect x="122" y="104" width="48" height="82"/><rect x="194" y="134" width="33" height="52"/><rect x="747" y="123" width="39" height="63"/><rect x="806" y="105" width="41" height="81"/></g>
+<path d="M0 200 Q140 158 295 201 T600 197 T900 198 V320 H0Z" fill="url(#bed)"/>
+<path d="M0 250 Q146 211 292 252 T588 245 T900 246 V320 H0Z" fill="#f6ebe5" opacity=".72"/>
+<g transform="translate(360 105)"><ellipse cx="98" cy="108" rx="112" ry="62" fill="#fff8f1"/><ellipse cx="55" cy="109" rx="65" ry="45" fill="#d39178"/><path d="M104 57 129 23l21 40 45-28 3 62q-2 57-69 57-65 0-64-54l4-59 35 16z" fill="#fffaf4"/><path d="M105 57 129 23l13 39z" fill="#51414a"/><path d="M151 63 195 35l3 62-45-8z" fill="#9c6f70"/><path d="M102 101q11 8 22 0M147 101q11 8 22 0" fill="none" stroke="#6d4b52" stroke-width="5" stroke-linecap="round"/><path d="m130 111 7 7 7-7m-7 7v10" fill="none" stroke="#c36c82" stroke-width="4" stroke-linecap="round"/><path d="M30 130q-34 22 4 37" fill="none" stroke="#9d7068" stroke-width="17" stroke-linecap="round"/></g>
+<g fill="none" stroke="#d97891" stroke-width="4" stroke-linecap="round"><path d="M314 78c0-14 19-15 19 0 0-15 20-14 20 0 0 14-20 27-20 27s-19-13-19-27z"/><path d="M590 68c0-9 12-10 12 0 0-10 13-9 13 0 0 9-13 17-13 17s-12-8-12-17z"/></g>
+<g opacity=".83"><path d="M24 245q20-63 70-73-13 34-37 50 38-29 64-11-30 35-77 39z" fill="#718671"/><path d="M844 246q-8-66-54-86 7 37 28 57-34-34-63-20 23 40 69 51z" fill="#74866f"/></g>
+</svg>
