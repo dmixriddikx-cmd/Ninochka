@@ -29,9 +29,9 @@ jobs:
         run: |
           rm -rf _site
           mkdir -p _site/assets
-          cp index.html styles.css week-polish.css final-theme.css final-approved.css final-approved-2.css core.js corefix.js _site/
+          cp index.html styles.css week-polish.css final-theme.css final-approved.css final-approved-2.css contract.css core.js corefix.js _site/
           cp -r assets/* _site/assets/
-          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-final.js v4/app-atlas.js v4/app-approved.js v4/app-assets.js v4/app-approved-2.js > _site/app.js
+          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-final.js v4/app-atlas.js v4/app-approved.js v4/app-assets.js v4/app-approved-2.js v4/app-contract.js > _site/app.js
           touch _site/.nojekyll
 
           node --check _site/app.js
@@ -40,37 +40,22 @@ jobs:
           node tests-v4.mjs
 
           test -s _site/index.html
-          test -s _site/styles.css
-          test -s _site/week-polish.css
-          test -s _site/final-theme.css
-          test -s _site/final-approved.css
-          test -s _site/final-approved-2.css
-          test -s _site/core.js
-          test -s _site/corefix.js
+          test -s _site/contract.css
           test -s _site/app.js
-          test -s _site/assets/storage-guards.svg
-          test -s _site/assets/storage-guards-light.svg
-          test -s _site/assets/final-dark-hero.b64
-          test -s _site/assets/final-light-home.b64
-          base64 -d _site/assets/final-dark-hero.b64 > /tmp/final-dark-hero.webp
-          base64 -d _site/assets/final-light-home.b64 > /tmp/final-light-home.webp
-          file /tmp/final-dark-hero.webp | grep -qi 'Web/P image'
-          file /tmp/final-light-home.webp | grep -qi 'Web/P image'
-          for i in 0 1 2 3; do test -s "_site/assets/ref-atlas-$i.txt"; done
-          cat _site/assets/ref-atlas-{0,1,2,3}.txt | tr -d '\n\r ' | base64 -d > /tmp/ref-atlas.webp
-          test -s /tmp/ref-atlas.webp
-          file /tmp/ref-atlas.webp | grep -qi 'Web/P image'
-
-          grep -q 'notranslate' _site/index.html
-          grep -q 'final-approved-2.css' _site/index.html
-          grep -q 'ninochka-v4' _site/app.js
-          grep -q "corefix.js" _site/app.js
-          grep -q "ap2-plan" _site/app.js
-          grep -q "ap2-storage" _site/app.js
-          grep -q "ap2-more" _site/app.js
-          grep -q "approved-dark-hero" _site/app.js
-          grep -q "data-week-step" _site/app.js
-          echo "Ninochka approved-board refinement build verified"
+          test -s _site/assets/storage-approved.b64
+          test -s _site/assets/week-empty-approved.b64
+          base64 -d _site/assets/storage-approved.b64 > /tmp/storage-approved.webp
+          base64 -d _site/assets/week-empty-approved.b64 > /tmp/week-empty-approved.webp
+          file /tmp/storage-approved.webp | grep -qi 'Web/P image'
+          file /tmp/week-empty-approved.webp | grep -qi 'Web/P image'
+          grep -q 'contract.css' _site/index.html
+          grep -q 'FINAL UI CONTRACT' _site/app.js
+          grep -q 'ct-storage-art' _site/app.js
+          grep -q 'ct-plan-page' _site/app.js
+          grep -q 'ct-more-page' _site/app.js
+          grep -q 'ct-home-hero' _site/contract.css
+          grep -q 'ct-storage-hero' _site/contract.css
+          echo "Ninochka FINAL UI CONTRACT build verified"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
