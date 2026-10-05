@@ -29,32 +29,37 @@ jobs:
         run: |
           rm -rf _site
           mkdir -p _site/assets
-          cp index.html styles.css week-polish.css final-v2.css core.js corefix.js _site/
+          cp index.html styles.css week-polish.css final-theme.css core.js corefix.js _site/
           cp -r assets/* _site/assets/
-          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-06.js > _site/app.js
+          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-final.js v4/app-atlas.js > _site/app.js
           touch _site/.nojekyll
 
           node --check _site/app.js
           node --check _site/core.js
           node --check _site/corefix.js
           node tests-v4.mjs
+
           test -s _site/index.html
           test -s _site/styles.css
           test -s _site/week-polish.css
-          test -s _site/final-v2.css
+          test -s _site/final-theme.css
           test -s _site/core.js
           test -s _site/corefix.js
           test -s _site/app.js
-          test -s _site/assets/hero-night.svg
-          test -s _site/assets/hero-light.svg
           test -s _site/assets/storage-guards.svg
+          for i in 0 1 2 3; do test -s "_site/assets/ref-atlas-$i.txt"; done
+          cat _site/assets/ref-atlas-{0,1,2,3}.txt | tr -d '\n\r ' | base64 -d > /tmp/ref-atlas.webp
+          test -s /tmp/ref-atlas.webp
+          file /tmp/ref-atlas.webp | grep -qi 'Web/P image'
+
           grep -q 'notranslate' _site/index.html
-          grep -q 'final-v2.css' _site/index.html
+          grep -q 'final-theme.css' _site/index.html
           grep -q 'ninochka-v4' _site/app.js
           grep -q "corefix.js" _site/app.js
+          grep -q "fx-nav" _site/app.js
+          grep -q "ref-atlas" _site/app.js
           grep -q "data-week-step" _site/app.js
-          grep -q "approved-hero" _site/app.js
-          echo "Ninochka V4 approved design build verified"
+          echo "Ninochka exact-reference build verified"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
