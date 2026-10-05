@@ -29,9 +29,9 @@ jobs:
         run: |
           rm -rf _site
           mkdir -p _site/assets
-          cp index.html styles.css week-polish.css core.js corefix.js _site/
+          cp index.html styles.css week-polish.css final-v2.css core.js corefix.js _site/
           cp -r assets/* _site/assets/
-          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js > _site/app.js
+          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-06.js > _site/app.js
           touch _site/.nojekyll
 
           node --check _site/app.js
@@ -41,6 +41,7 @@ jobs:
           test -s _site/index.html
           test -s _site/styles.css
           test -s _site/week-polish.css
+          test -s _site/final-v2.css
           test -s _site/core.js
           test -s _site/corefix.js
           test -s _site/app.js
@@ -48,11 +49,12 @@ jobs:
           test -s _site/assets/hero-light.svg
           test -s _site/assets/storage-guards.svg
           grep -q 'notranslate' _site/index.html
-          grep -q 'week-polish.css' _site/index.html
+          grep -q 'final-v2.css' _site/index.html
           grep -q 'ninochka-v4' _site/app.js
           grep -q "corefix.js" _site/app.js
           grep -q "data-week-step" _site/app.js
-          echo "Ninochka V4 final design build verified"
+          grep -q "approved-hero" _site/app.js
+          echo "Ninochka V4 approved design build verified"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
