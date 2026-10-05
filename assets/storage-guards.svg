@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" role="img" aria-label="Копилка с монетами и двумя красными охранниками">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#35232f"/><stop offset=".55" stop-color="#5b3344"/><stop offset="1" stop-color="#1e2029"/></linearGradient>
+  <radialGradient id="glow"><stop stop-color="#ffd7b0"/><stop offset=".55" stop-color="#f29b9f" stop-opacity=".45"/><stop offset="1" stop-color="#f29b9f" stop-opacity="0"/></radialGradient>
+  <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".42"/><stop offset=".4" stop-color="#ffc0ce" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity=".08"/></linearGradient>
+</defs>
+<rect width="900" height="300" rx="34" fill="url(#bg)"/>
+<circle cx="450" cy="132" r="150" fill="url(#glow)"/>
+<g opacity=".7" fill="#f5bf73"><circle cx="396" cy="222" r="22"/><circle cx="429" cy="224" r="22"/><circle cx="464" cy="221" r="22"/><circle cx="500" cy="225" r="22"/><circle cx="445" cy="196" r="22"/><circle cx="482" cy="198" r="22"/></g>
+<g transform="translate(344 35)"><path d="M42 21h128l-8 26H50z" fill="#9b6f54"/><path d="M58 39h96l16 148q5 51-48 51H90q-53 0-48-51z" fill="url(#glass)" stroke="#ffd9cf" stroke-opacity=".55" stroke-width="5"/><ellipse cx="106" cy="196" rx="53" ry="28" fill="#f5bf73" opacity=".8"/>
+<g transform="translate(72 84)"><path d="M34 40q0-33 35-33t35 33v22q0 26-35 26T34 62z" fill="#f7a7b6"/><path d="M92 43q18 5 17 18-1 14-18 13" fill="none" stroke="#f7a7b6" stroke-width="10" stroke-linecap="round"/><circle cx="60" cy="48" r="3.5" fill="#57343c"/><circle cx="78" cy="48" r="3.5" fill="#57343c"/><path d="m64 58 5 4 5-4" fill="none" stroke="#8d4e5d" stroke-width="3" stroke-linecap="round"/><path d="M44 20 52 7l13 13" fill="#f7a7b6"/><path d="M78 19 92 7l6 15" fill="#f7a7b6"/><path d="M62 2h15" stroke="#57343c" stroke-width="4" stroke-linecap="round"/></g>
+<path d="M78 119c0-18 24-19 24 0 0-19 25-18 25 0 0 18-25 35-25 35s-24-17-24-35z" fill="#ff6f9d" opacity=".88"/>
+</g>
+<g transform="translate(110 87)"><path d="M45 70q7-47 48-47t48 47v91H45z" fill="#dd496f"/><circle cx="93" cy="48" r="38" fill="#161821"/><circle cx="93" cy="48" r="19" fill="none" stroke="#f5dbe2" stroke-width="5"/><path d="M62 158v55M124 158v55" stroke="#b23355" stroke-width="18" stroke-linecap="round"/><path d="M58 111h70" stroke="#f06f92" stroke-width="9" opacity=".45"/></g>
+<g transform="translate(650 87)"><path d="M45 70q7-47 48-47t48 47v91H45z" fill="#dd496f"/><circle cx="93" cy="48" r="38" fill="#161821"/><path d="m93 29 22 38H71z" fill="none" stroke="#f5dbe2" stroke-width="5" stroke-linejoin="round"/><path d="M62 158v55M124 158v55" stroke="#b23355" stroke-width="18" stroke-linecap="round"/><path d="M58 111h70" stroke="#f06f92" stroke-width="9" opacity=".45"/></g>
+<g fill="#f8d7b4" opacity=".8"><circle cx="80" cy="54" r="3"/><circle cx="812" cy="62" r="3"/><circle cx="734" cy="31" r="2"/><circle cx="174" cy="35" r="2"/></g>
+</svg>
