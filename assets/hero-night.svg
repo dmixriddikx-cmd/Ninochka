@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 320" role="img" aria-label="Уютная ночная комната с котом у окна">
+<defs>
+  <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#171727"/><stop offset=".58" stop-color="#35243b"/><stop offset="1" stop-color="#7a4557"/></linearGradient>
+  <linearGradient id="bed" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4e3f55"/><stop offset="1" stop-color="#24212b"/></linearGradient>
+  <radialGradient id="moon"><stop stop-color="#fff8d9"/><stop offset=".7" stop-color="#ffd9bd"/><stop offset="1" stop-color="#efa8a2" stop-opacity=".2"/></radialGradient>
+  <filter id="glow"><feGaussianBlur stdDeviation="9"/></filter>
+</defs>
+<rect width="900" height="320" rx="36" fill="url(#sky)"/>
+<circle cx="690" cy="72" r="64" fill="#efb7b1" opacity=".22" filter="url(#glow)"/><circle cx="690" cy="72" r="43" fill="url(#moon)"/>
+<g opacity=".72" fill="#f4bd8b"><rect x="60" y="113" width="44" height="72" rx="4"/><rect x="119" y="93" width="52" height="92" rx="4"/><rect x="187" y="124" width="37" height="61" rx="4"/><rect x="740" y="112" width="45" height="73" rx="4"/><rect x="798" y="90" width="49" height="95" rx="4"/></g>
+<g fill="#251f2c"><rect x="57" y="126" width="50" height="65"/><rect x="116" y="108" width="58" height="83"/><rect x="184" y="135" width="43" height="56"/><rect x="737" y="128" width="51" height="63"/><rect x="795" y="104" width="55" height="87"/></g>
+<g fill="#ffc78a" opacity=".9"><circle cx="71" cy="143" r="3"/><circle cx="89" cy="157" r="3"/><circle cx="132" cy="124" r="3"/><circle cx="154" cy="147" r="3"/><circle cx="207" cy="153" r="3"/><circle cx="753" cy="146" r="3"/><circle cx="774" cy="162" r="3"/><circle cx="811" cy="122" r="3"/><circle cx="831" cy="151" r="3"/></g>
+<path d="M0 202 Q150 155 302 202 T602 196 T900 198 V320 H0Z" fill="url(#bed)"/>
+<path d="M0 247 Q145 204 292 249 T585 244 T900 242 V320 H0Z" fill="#2a2430" opacity=".8"/>
+<g transform="translate(360 105)"><ellipse cx="98" cy="108" rx="112" ry="62" fill="#f1ddd4"/><ellipse cx="55" cy="109" rx="65" ry="45" fill="#d18e77"/><path d="M104 57 129 23l21 40 45-28 3 62q-2 57-69 57-65 0-64-54l4-59 35 16z" fill="#f6e7df"/><path d="M105 57 129 23l13 39z" fill="#3b3541"/><path d="M151 63 195 35l3 62-45-8z" fill="#7e5960"/><path d="M102 101q11 8 22 0M147 101q11 8 22 0" fill="none" stroke="#5b3e49" stroke-width="5" stroke-linecap="round"/><path d="m130 111 7 7 7-7m-7 7v10" fill="none" stroke="#b76a7d" stroke-width="4" stroke-linecap="round"/><path d="M30 130q-34 22 4 37" fill="none" stroke="#8c6266" stroke-width="17" stroke-linecap="round"/></g>
+<g fill="none" stroke="#d77f9b" stroke-width="4" stroke-linecap="round"><path d="M315 79c0-14 19-15 19 0 0-15 20-14 20 0 0 14-20 27-20 27s-19-13-19-27z"/><path d="M590 66c0-9 12-10 12 0 0-10 13-9 13 0 0 9-13 17-13 17s-12-8-12-17z"/></g>
+<g opacity=".75"><path d="M24 244q20-62 69-73-13 34-37 50 38-29 64-11-30 35-77 39z" fill="#273a32"/><path d="M844 246q-8-66-54-86 7 37 28 57-34-34-63-20 23 40 69 51z" fill="#263a31"/></g>
+</svg>
