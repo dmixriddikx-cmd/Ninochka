@@ -94,6 +94,22 @@ function adoptRemote(data) {
   render();
 }
 
+async function ensureRequestedUahTestExpense() {
+  const testId = 'uah-check-1123-20261006';
+  const month = state.months?.find(x => x.id === '2026-10');
+  const week = month?.weeks?.find(x => x.id === 1);
+  if (!week || week.expenses?.some(x => x.id === testId)) return;
+  try {
+    await ensureRateFor('UAH');
+    const item = core.addExpense(state, week, {name:'Проверка гривны',category:'leisure',amount:'1123',currency:'UAH'});
+    item.id = testId;
+    item.actor = 'volodymyr';
+    save();
+  } catch (error) {
+    console.warn('UAH integration check was not seeded:', error?.message || error);
+  }
+}
+
 function backupLocal() {
   const content = localStorage.getItem(STORE);
   if (!content) return;
@@ -186,6 +202,7 @@ async function connectSync(login = '', pin = '', restoring = false) {
       queueSync();
     } else if (remote.data) {
       adoptRemote(remote.data);
+      await ensureRequestedUahTestExpense();
     } else {
       sync.dirty = true;
       localStorage.setItem(SYNC_DIRTY, '1');
