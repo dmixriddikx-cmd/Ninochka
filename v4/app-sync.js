@@ -164,6 +164,10 @@ async function connectSync(login = '', pin = '', restoring = false) {
       sync.token = auth.token;
       sync.actor = auth.actor;
       sync.login = login.trim();
+      // Persist the authenticated session immediately. Shared-budget activation
+      // is a separate data choice and must not make login disappear on reload.
+      localStorage.setItem(SYNC_TOKEN, sync.token);
+      localStorage.setItem(SYNC_LOGIN, sync.login);
     }
 
     const remote = await syncRequest('GET');
@@ -183,6 +187,9 @@ async function connectSync(login = '', pin = '', restoring = false) {
       }
     } else {
       sync.staged = remote;
+      // Mark the session as restorable as soon as credentials are verified.
+      // The staged remote/local choice is still preserved below.
+      localStorage.setItem(SYNC_READY, '1');
     }
   } catch (error) {
     if (restoring && error.status === 401) clearSyncSession('Сессия закончилась. Войди снова.');
