@@ -4,13 +4,45 @@
 Object.assign(dict.ru,{
   storageCurrencyShort:'Валюта Хранилища', ratesAuto:'Обновляется автоматически', appearance:'Внешний вид', myBudget:'Мой бюджет', calmFinance:'Спокойные финансы для счастливой жизни',
   backupTitle:'Резервная копия', exportData:'Экспорт данных', importData:'Импорт данных', allWeeks:'Все недели', categoriesPlan:'Категории плана',
-  courseToMdl:'Курс к MDL', storageAndCurrency:'Хранилище и валюта', currentBalance:'Текущий баланс'
+  courseToMdl:'Курс к MDL', storageAndCurrency:'Хранилище и валюта', currentBalance:'Текущий баланс',
+  expensesTab:'Расходы', income:'Доходы', chooseWeek:'Выбрать неделю', planned:'Запланирована', topUp:'Пополнить', withdraw:'Снять',
+  directHero:'Зай, тут всё просто ♥', directHeroCopy:'Смотри баланс, текущую неделю и расходы — всё главное рядом.',
+  emptyWeekCopy:'Добавь первый расход — дальше всё посчитается само.', noRateYet:'Курс ещё не получен', household:'Дом', health:'Здоровье', gifts:'Подарки'
 });
 Object.assign(dict.uk,{
   storageCurrencyShort:'Валюта Сховища', ratesAuto:'Оновлюється автоматично', appearance:'Зовнішній вигляд', myBudget:'Мій бюджет', calmFinance:'Спокійні фінанси для щасливого життя',
   backupTitle:'Резервна копія', exportData:'Експорт даних', importData:'Імпорт даних', allWeeks:'Усі тижні', categoriesPlan:'Категорії плану',
-  courseToMdl:'Курс до MDL', storageAndCurrency:'Сховище і валюта', currentBalance:'Поточний баланс'
+  courseToMdl:'Курс до MDL', storageAndCurrency:'Сховище і валюта', currentBalance:'Поточний баланс',
+  expensesTab:'Витрати', income:'Доходи', chooseWeek:'Обрати тиждень', planned:'Запланований', topUp:'Поповнити', withdraw:'Зняти',
+  directHero:'Зай, тут усе просто ♥', directHeroCopy:'Дивись баланс, поточний тиждень і витрати — усе головне поруч.',
+  emptyWeekCopy:'Додай першу витрату — далі все порахується саме.', noRateYet:'Курс ще не отримано', household:'Дім', health:'Здоров’я', gifts:'Подарунки'
 });
+
+// The contract is the only active UI renderer. These helpers deliberately live
+// beside it, so the page never depends on an earlier experimental renderer.
+function resolvedDarkFinal(){
+  const pref=state.preferences.theme;
+  return pref==='dark'||(pref==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches);
+}
+function activeWeekFinal(){
+  const mm=m();
+  return mm.weeks.find(x=>x.id===view.week)||mm.weeks.find(x=>x.status!=='closed')||mm.weeks.at(-1);
+}
+function progressFinal(spent,fund){
+  const raw=fund>0?(spent/fund)*100:0;
+  return {bar:Math.max(0,Math.min(100,raw)),left:Math.max(0,100-raw)};
+}
+function moneyPlain(minor,currency=state.storage.currency){return fmt(Number(minor)||0,currency)}
+function weekDatesFinal(weekId){
+  const [year,month]=m().id.split('-').map(Number),start=1+(Number(weekId)-1)*7,last=new Date(year,month,0).getDate(),end=Math.min(last,start+6);
+  const monthName=new Intl.DateTimeFormat(lang()==='uk'?'uk-UA':'ru-RU',{month:'long'}).format(new Date(year,month-1,1));
+  return `${start}–${end} ${monthName} ${year}`;
+}
+function secondaryBalanceFinal(){
+  if(state.storage.currency==='MDL')return '';
+  const rate=safe(()=>core.getRate(state,state.storage.currency,'MDL'),null);
+  return rate?moneyPlain(Math.round(state.storage.balance*rate),'MDL'):'';
+}
 
 function contractIcon(c){return({products:'🧺',household:'⌂',transport:'🚙',leisure:'♡',clothes:'👕',health:'♡',gifts:'🎁',other:'•••'})[c]||'•'}
 function contractLabel(c){return ({household:tr('household'),health:tr('health'),gifts:tr('gifts')})[c]||tr(c)||c}
@@ -62,17 +94,60 @@ function contractMore(){const nbTotal=state.nbEntries.reduce((s,x)=>s+(x.currenc
 <section class="ct-card ct-nb"><div><small>${tr('nb')}</small><strong>${fmt(nbTotal)}</strong><p>${tr('nbHint')}</p></div><button class="ct-primary" data-action="nb-add">＋ ${tr('addIncome')}</button></section>
 <section class="ct-card"><h2>${tr('backupTitle')}</h2><div class="ct-backup"><button class="ct-soft" data-action="export">${tr('exportData')}</button><label class="ct-soft">${tr('importData')}<input type="file" id="import-file" accept="application/json,.json" hidden></label></div></section></section>`}
 
-homeFinal=contractHome;
-weekPageFinal=contractWeek;
-planPageFinal=contractPlan;
-storagePageFinal=contractStorage;
-morePageFinal=contractMore;
-navFinal=contractNav;
-topFinal=contractTop;
+function renderOnboardingFinal(i){
+  document.querySelector('.onboarding')?.remove();
+  const slides=[['on1t','on1c'],['on2t','on2c'],['on3t','on3c'],['on4t','on4c']];
+  const [title,copy]=slides[i],el=document.createElement('div');
+  el.className='onboarding ct-onboarding';
+  el.innerHTML=`<div class="ct-onboarding-art ct-onboarding-art-${i+1}"></div><section class="ct-onboarding-sheet"><div class="ct-onboarding-index">${i+1} / ${slides.length}</div><h1>${tr(title)}</h1><p>${tr(copy)}</p><div class="ct-onboarding-dots">${slides.map((_,n)=>`<i class="${n===i?'active':''}"></i>`).join('')}</div><button class="ct-primary" data-onboard="${i<slides.length-1?i+1:'done'}">${i<slides.length-1?tr('next'):tr('start')}</button></section>`;
+  document.body.append(el);
+}
+renderOnboarding=renderOnboardingFinal;
+
+function storageAdjustmentModal(kind){
+  const adding=kind==='add', sign=adding?'＋':'−', verb=adding?tr('topUp'):tr('withdraw');
+  showModal(verb,`${field('amount',tr('amount'),'','inputmode="decimal" placeholder="0.00"')}${currencySelect('currency',state.storage.currency)}${field('note',tr('note'),'','placeholder="'+tr('note')+'"')}<div class="modal-actions"><button class="btn primary" data-final-storage="${adding?'add':'sub'}">${sign} ${verb}</button></div>`);
+}
+function quickExpenseModal(category){
+  const ww=w();
+  showModal(tr('addExpense'),`${field('name',tr('name'),tr(category),'placeholder="'+tr('restaurant')+'"')}${field('amount',tr('amount'),'','inputmode="decimal" placeholder="0.00"')}${currencySelect('currency',state.storage.currency)}<input type="hidden" name="category" value="${category}"><div class="modal-actions"><button class="btn primary" data-action="expense-save">${tr('save')}</button></div>`);
+}
 
 render=function(){setDoc();let body='';if(view.tab==='home')body=contractHome();else if(view.tab==='week')body=view.weekMode==='list'?contractWeekList():contractWeek();else if(view.tab==='plan')body=contractPlan();else if(view.tab==='storage')body=contractStorage();else body=contractMore();app.innerHTML=`<div class="app ct-app">${body}</div>${contractNav()}`;if(!state.preferences.onboardingSeen)renderOnboardingFinal(0)};
 
-(async()=>{try{const r=await fetch('./assets/storage-approved.b64',{cache:'force-cache'});if(r.ok){const b64=(await r.text()).replace(/\s+/g,''),bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);document.documentElement.style.setProperty('--ct-storage-art',`url("${URL.createObjectURL(new Blob([bytes],{type:'image/webp'}))}")`)}}catch(e){console.warn('storage art unavailable',e)}})();
-(async()=>{try{const r=await fetch('./assets/week-empty-approved.b64',{cache:'force-cache'});if(r.ok){const b64=(await r.text()).replace(/\s+/g,''),bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);document.documentElement.style.setProperty('--ct-week-empty',`url("${URL.createObjectURL(new Blob([bytes],{type:'image/webp'}))}")`)}}catch(e){console.warn('week art unavailable',e)}})();
+document.addEventListener('click',e=>{
+  const selected=e.target.closest('[data-week-select]');
+  if(selected){e.preventDefault();e.stopImmediatePropagation();view.week=Number(selected.dataset.weekSelect);view.weekMode='detail';render();return}
+  const action=e.target.closest('[data-final-action]');
+  if(!action)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  if(action.dataset.finalAction==='back-home'){view.tab='home';view.weekMode='detail';render();return}
+  if(action.dataset.finalAction==='open-week'){view.tab='week';view.week=firstOpenWeekId();view.weekMode='detail';render();return}
+  if(action.dataset.finalAction==='week-list'){view.weekMode='list';render();return}
+  if(action.dataset.finalAction==='storage-add'){storageAdjustmentModal('add');return}
+  if(action.dataset.finalAction==='storage-sub'){storageAdjustmentModal('sub');return}
+  if(action.dataset.finalAction==='quick-expense'){quickExpenseModal(action.dataset.category||'other')}
+},true);
+document.addEventListener('click',e=>{
+  const action=e.target.closest('[data-final-storage]');
+  if(!action)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  (async()=>{try{await ensureRateFor(val('currency'));const amount=val('amount');core.adjustStorage(state,action.dataset.finalStorage==='sub'?`-${amount}`:amount,val('currency'),val('note'));closeModal();persist()}catch(error){notify(errorMessage(error))}})();
+},true);
+
+async function decodeContractArtwork(variable,path){
+  try{
+    const response=await fetch(path,{cache:'force-cache'});
+    if(!response.ok)throw new Error('asset unavailable');
+    const binary=atob((await response.text()).replace(/\s+/g,''));
+    const bytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+    document.documentElement.style.setProperty(variable,`url("${URL.createObjectURL(new Blob([bytes],{type:'image/webp'}))}")`);
+  }catch(error){console.warn(`Ninochka artwork unavailable: ${path}`,error)}
+}
+decodeContractArtwork('--approved-dark-hero','./assets/final-dark-hero.b64');
+decodeContractArtwork('--approved-light-home','./assets/final-light-home.b64');
+decodeContractArtwork('--ct-storage-art','./assets/storage-approved.b64');
+decodeContractArtwork('--ct-week-empty','./assets/week-empty-approved.b64');
 
 view.weekMode='detail';render();

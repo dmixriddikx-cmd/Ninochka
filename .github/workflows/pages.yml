@@ -29,15 +29,19 @@ jobs:
         run: |
           rm -rf _site
           mkdir -p _site/assets
-          cp index.html styles.css week-polish.css final-theme.css final-approved.css final-approved-2.css contract.css core.js corefix.js _site/
+          BUILD_ID="$(git rev-parse --short HEAD)"
+          sed "s/__BUILD_ID__/${BUILD_ID}/g" index.html > _site/index.html
+          cp contract.css core.js corefix.js _site/
           cp -r assets/* _site/assets/
-          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-final.js v4/app-atlas.js v4/app-approved.js v4/app-assets.js v4/app-approved-2.js v4/app-contract.js > _site/app.js
+          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js > _site/app.js
           touch _site/.nojekyll
 
           node --check _site/app.js
           node --check _site/core.js
           node --check _site/corefix.js
           node tests-v4.mjs
+          node tests-ui-contract.mjs _site
+          node tests-ui-runtime.mjs _site
 
           test -s _site/index.html
           test -s _site/contract.css
@@ -48,7 +52,9 @@ jobs:
           base64 -d _site/assets/week-empty-approved.b64 > /tmp/week-empty-approved.webp
           file /tmp/storage-approved.webp | grep -qi 'Web/P image'
           file /tmp/week-empty-approved.webp | grep -qi 'Web/P image'
-          grep -q 'contract.css' _site/index.html
+          grep -q 'contract.css?v=' _site/index.html
+          test "$(grep -c 'stylesheet' _site/index.html)" -eq 1
+          ! grep -Eq 'styles\.css|final-theme\.css|final-approved|week-polish' _site/index.html
           grep -q 'FINAL UI CONTRACT' _site/app.js
           grep -q 'ct-storage-art' _site/app.js
           grep -q 'ct-plan-page' _site/app.js

@@ -31,7 +31,7 @@ export function blankMonth(id=nowMonth(), previous=null){
 export function createState(){
   return {
     schemaVersion:SCHEMA,
-    preferences:{language:'ru',theme:'auto',onboardingSeen:false},
+    preferences:{language:'ru',theme:'dark',onboardingSeen:false},
     storage:{balance:0,currency:'EUR',history:[]},
     rates:{},
     months:[blankMonth()],
