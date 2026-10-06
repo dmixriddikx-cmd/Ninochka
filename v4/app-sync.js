@@ -149,9 +149,11 @@ function budgetIsZero(data) {
   );
 }
 
-async function resetTestData() {
-  if (!confirm('Сбросить все суммы, расходы, планы, доходы и историю? Резервная копия сохранится автоматически.')) return;
-  if (prompt('Для подтверждения введи СБРОС')?.trim().toUpperCase() !== 'СБРОС') return;
+async function resetTestData(skipConfirmation = false) {
+  if (!skipConfirmation) {
+    if (!confirm('Сбросить все суммы, расходы, планы, доходы и историю? Резервная копия сохранится автоматически.')) return;
+    if (prompt('Для подтверждения введи СБРОС')?.trim().toUpperCase() !== 'СБРОС') return;
+  }
 
   const before = localStorage.getItem(STORE) || '';
   localStorage.setItem(`ninochka-before-reset-${Date.now()}`, before);
