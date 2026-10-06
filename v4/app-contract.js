@@ -100,6 +100,25 @@ function contractMore(){const nbTotal=state.nbEntries.reduce((s,x)=>s+(x.currenc
 <section class="ct-card"><h2>${tr('backupTitle')}</h2><div class="ct-backup"><button class="ct-soft" data-action="export">${tr('exportData')}</button><label class="ct-soft">${tr('importData')}<input type="file" id="import-file" accept="application/json,.json" hidden></label></div></section>
 <section class="ct-card ct-reset-card"><h2>Тестовые данные</h2><p class="ct-profile-note">Перед передачей Нине можно обнулить суммы, расходы, план и историю. Резервная копия сохранится автоматически.</p><button class="ct-soft ct-danger ct-full" data-sync="reset">Сбросить всё к нулю</button></section></section>`}
 
+function onboardingGuideVisual(i){
+  if(i===2)return `<div class="ct-guide-shot ct-guide-expense">
+    <div class="ct-guide-top"><span>Расходы</span><b>＋ Добавить расход</b></div>
+    <div class="ct-guide-modal">
+      <small>Название</small><strong>Например, кафе</strong>
+      <div><label><small>Сумма</small><b>450,00</b></label><label><small>Валюта</small><b>🇪🇺 EUR⌄</b></label></div>
+      <em>Сохранить</em>
+    </div>
+    <p><b>1.</b> Открой «Расходы» → <b>2.</b> «Добавить расход» → <b>3.</b> сумма, валюта и категория.</p>
+  </div>`;
+  if(i===3)return `<div class="ct-guide-shot ct-guide-currency">
+    <div class="ct-guide-balance"><small>Сейчас на счёте</small><strong>20 393,60 $</strong><button>🇺🇸</button></div>
+    <div class="ct-guide-arrow">↓</div>
+    <div class="ct-guide-options"><span>🇪🇺 EUR</span><span>🇺🇸 USD</span><span>🇲🇩 MDL</span><span>🇺🇦 UAH</span></div>
+    <p>На Главной нажми <b>на флажок</b> — это валюта Хранилища. В расходах выбирай валюту каждой покупки отдельно.</p>
+  </div>`;
+  return '';
+}
+
 function renderOnboardingFinal(i){
   document.querySelector('.onboarding')?.remove();
   const slides=[['on1t','on1c'],['on2t','on2c'],['on3t','on3c'],['on4t','on4c']];
@@ -108,10 +127,11 @@ function renderOnboardingFinal(i){
   const personalCopy=[
     'Зай, я собрал здесь наш бюджет — спокойно и без лишней суеты.',
     'Планируй недели так, как удобно тебе. Я тоже буду участвовать.',
-    'Записывай траты в пару касаний. Свои я тоже внесу.',
-    'Баланс, планы и наши маленькие мечты — всё рядом. Я с тобой ♥'
+    'Каждую покупку заноси сюда — сумма сразу попадёт в неделю и нужную категорию.',
+    'Можно платить в разных валютах. Сайт сам приводит суммы к валюте нашего Хранилища.'
   ];
-  el.innerHTML=`<div class="ct-onboarding-art ct-onboarding-art-${i+1}"></div><section class="ct-onboarding-sheet"><div class="ct-onboarding-index">${i+1} / ${slides.length}</div><h1>${i===0?'Добро пожаловать ♥':i===1?'Планируй недели':i===2?'Учитывай расходы':'Всё под контролем'}</h1><p>${lang()==='ru'?personalCopy[i]:tr(copy)}</p><div class="ct-onboarding-dots">${slides.map((_,n)=>`<i class="${n===i?'active':''}"></i>`).join('')}</div><button class="ct-primary" data-onboard="${i<slides.length-1?i+1:'done'}">${i<slides.length-1?tr('next'):tr('start')}</button></section>`;
+  const headings=['Добро пожаловать ♥','Планируй недели','Куда вносить расходы','Как менять валюту'];
+  el.innerHTML=`<div class="ct-onboarding-art ct-onboarding-art-${i+1}"></div><section class="ct-onboarding-sheet ${i>=2?'ct-onboarding-sheet-guide':''}"><div class="ct-onboarding-index">${i+1} / ${slides.length}</div><h1>${headings[i]}</h1><p>${lang()==='ru'?personalCopy[i]:tr(copy)}</p>${onboardingGuideVisual(i)}<div class="ct-onboarding-dots">${slides.map((_,n)=>`<i class="${n===i?'active':''}"></i>`).join('')}</div><button class="ct-primary" data-onboard="${i<slides.length-1?i+1:'done'}">${i<slides.length-1?tr('next'):tr('start')}</button></section>`;
   document.body.append(el);
 }
 renderOnboarding=renderOnboardingFinal;
