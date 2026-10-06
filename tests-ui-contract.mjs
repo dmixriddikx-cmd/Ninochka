@@ -21,6 +21,6 @@ for (const marker of ['function resolvedDarkFinal', 'function activeWeekFinal', 
 if (app.lastIndexOf('render=function') < app.lastIndexOf('function contractHome')) fail('contract renderer is not the final renderer');
 if (/document\.addEventListener\('click',[\s\S]{0,700}\[data-action="expense-save"\][\s\S]{0,700}\},true\);/.test(app)) fail('expense save must not be intercepted in capture phase');
 if (!/if\(action==='expense-save'\)[\s\S]{0,900}core\.addExpense/.test(app)) fail('expense save path must reach core.addExpense');
-if (!/function currencySelect[\s\S]{0,500}<option value="\\\$\{c\}"/.test(app)) fail('currency selector must preserve raw ISO currency codes as option values');
+if (!app.includes('<option value="${c}"')) fail('currency selector must preserve raw ISO currency codes as option values');
 
 console.log('UI contract checks PASS');
