@@ -1,12 +1,6 @@
  if(action==='export'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));a.download=`ninochka-${core.nowMonth()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);return}
  if(action==='currency-manual'){core.changeStorageCurrency(state,el.dataset.to,Number(val('rate')));closeModal();return persist(tr('currencyChanged'))}
- }catch(e){
-   if(action==='expense-save'){
-     const btn=modal.querySelector('[data-action="expense-save"]');
-     if(btn){btn.dataset.busy='0';btn.disabled=false;btn.textContent=tr('save')}
-   }
-   notify(errorMessage(e))
- }}
+ }catch(e){notify(errorMessage(e))}}
 
 document.addEventListener('click',e=>{const tab=e.target.closest('[data-tab]');if(tab){view.tab=tab.dataset.tab;render();return}const ww=e.target.closest('[data-week]');if(ww){view.week=Number(ww.dataset.week);render();return}const act=e.target.closest('[data-action]');if(act){e.preventDefault();handleAction(act.dataset.action,act)}const ob=e.target.closest('[data-onboard]');if(ob){if(ob.dataset.onboard==='done'){state.preferences.onboardingSeen=true;save();ob.closest('.onboarding').remove()}else renderOnboarding(Number(ob.dataset.onboard))}const th=e.target.closest('[data-theme-choice]');if(th){state.preferences.theme=th.dataset.themeChoice;persist()}})
 document.addEventListener('change',e=>{if(e.target.matches('[data-setting="language"]')){state.preferences.language=e.target.value;save();closeModal();render();return}if(e.target.matches('[data-setting="theme"]')){state.preferences.theme=e.target.value;save();closeModal();render();return}if(e.target.matches('[data-action="storage-currency"]'))storageCurrencyChange(e.target.value)})
