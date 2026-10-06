@@ -13,7 +13,15 @@ function renderOnboarding(i){
   document.body.append(el)
 }
 
-async function fetchRate(from,to){if(from===to)return 1;const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),8000);try{const r=await fetch(`https://api.frankfurter.dev/v2/rate/${from.toLowerCase()}/${to.toLowerCase()}`,{signal:ctrl.signal,cache:'no-store'});if(!r.ok)throw 0;const d=await r.json();if(!Number.isFinite(d.rate)||d.rate<=0)throw 0;core.setRate(state,from,to,d.rate,'automatic',d.date);return d.rate}finally{clearTimeout(t)}}
+async function fetchRate(from,to){if(from===to)return 1;const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),8000);try{
+ if(from==='UAH'||to==='UAH'){
+  const r=await fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json',{signal:ctrl.signal,cache:'no-store'});if(!r.ok)throw 0;
+  const rows=await r.json(), map=Object.fromEntries(rows.map(x=>[x.cc,Number(x.rate)]));map.UAH=1;
+  const fromUah=map[from],toUah=map[to];if(!Number.isFinite(fromUah)||!Number.isFinite(toUah)||fromUah<=0||toUah<=0)throw 0;
+  const rate=fromUah/toUah,date=rows[0]?.exchangedate||new Date().toISOString().slice(0,10);core.setRate(state,from,to,rate,'NBU',date);return rate;
+ }
+ const r=await fetch(`https://api.frankfurter.dev/v2/rate/${from.toLowerCase()}/${to.toLowerCase()}`,{signal:ctrl.signal,cache:'no-store'});if(!r.ok)throw 0;const d=await r.json();if(!Number.isFinite(d.rate)||d.rate<=0)throw 0;core.setRate(state,from,to,d.rate,'automatic',d.date);return d.rate
+}finally{clearTimeout(t)}}
 function applyCurrentRatesToPlan(){const mm=m();for(const item of mm.obligations){item.rate=item.currency===state.storage.currency?1:core.getRate(state,item.currency,state.storage.currency)}for(const ww of mm.weeks){ww.fund.rate=ww.fund.currency===state.storage.currency?1:core.getRate(state,ww.fund.currency,state.storage.currency)}}
 async function refreshPlanRates(){planDraft=capturePlanDraft();try{await preparePlanRates(planDraft,{force:true});applyCurrentRatesToPlan();persist(tr('ratesUpdated'))}catch{notify(tr('rateFail'));render()}}
 async function ensureRateFor(currency){if(currency===state.storage.currency)return 1;let r=core.getRate(state,currency,state.storage.currency);if(r)return r;try{return await fetchRate(currency,state.storage.currency)}catch{throw new Error(`missing_rate:${currency}:${state.storage.currency}`)}}
