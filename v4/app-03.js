@@ -34,7 +34,14 @@ function wrapForm(root){let f=root.querySelector('form');if(f)return f;f=documen
 function val(name){return modal.querySelector(`[name="${CSS.escape(name)}"]`)?.value??''}
 function errorMessage(e){const s=String(e?.message||e);if(s==='invalid_money')return tr('invalidMoney');if(s==='name_required')return tr('nameRequired');if(s.startsWith('missing_rate:'))return tr('missingRate');if(s==='storage_write_failed')return lang()==='uk'?'Не вдалося зберегти витрату':'Не удалось сохранить расход';return s}
 
-async function handleAction(action,el){try{
+async function handleAction(action,el){
+ if(action==='expense-save'){
+   if(el.dataset.busy==='1')return;
+   el.dataset.busy='1';
+   el.disabled=true;
+   el.textContent=lang()==='uk'?'Зберігаю…':'Сохраняю…';
+ }
+ try{
  if(action==='settings')return settingsModal(); if(action==='modal-close')return closeModal(); if(action==='balance')return balanceModal(); if(action==='history')return historyModal(); if(action==='expense-add')return expenseModal(); if(action==='tutorial'){closeModal();state.preferences.onboardingSeen=false;save();return render()}
  if(action==='balance-adjust'){await ensureRateFor(val('currency'));core.adjustStorage(state,val('amount'),val('currency'),val('note'));state.storage.history[0].actor=state.preferences.actor==='volodymyr'?'volodymyr':'nina';closeModal();return persist()}
  if(action==='balance-exact'){await ensureRateFor(val('currency'));core.setStorageBalance(state,val('amount'),val('currency'),val('note'));state.storage.history[0].actor=state.preferences.actor==='volodymyr'?'volodymyr':'nina';closeModal();return persist()}
