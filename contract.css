@@ -100,3 +100,5 @@ linear-gradient(180deg,rgba(20,12,20,.24),rgba(20,12,20,.48)),var(--approved-dar
 .ct-balance-currency{position:relative;width:50px;height:46px;display:grid;place-items:center;border:1px solid var(--ct-line);border-radius:16px;background:var(--ct-card2);overflow:hidden}
 .ct-balance-flag{font-size:22px;line-height:1;pointer-events:none}
 .ct-balance-currency select{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-width:0!important;padding:0!important;border:0!important;opacity:0!important;cursor:pointer!important}
+
+.ct-auth-restoring .ct-auth-card{min-height:260px;display:grid;align-content:center}.ct-auth-restoring-mark{margin:28px auto 0;font-size:28px;color:var(--ct-pink);animation:ctAuthPulse .8s ease-in-out infinite alternate}@keyframes ctAuthPulse{to{opacity:.35;transform:scale(.92)}}
