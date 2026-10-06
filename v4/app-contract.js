@@ -4,7 +4,7 @@
 Object.assign(dict.ru,{
   storageCurrencyShort:'Валюта Хранилища', ratesAuto:'Обновляется автоматически', appearance:'Внешний вид', myBudget:'Мой бюджет', calmFinance:'Спокойные финансы для счастливой жизни',
   backupTitle:'Резервная копия', exportData:'Экспорт данных', importData:'Импорт данных', allWeeks:'Все недели', categoriesPlan:'Категории плана',
-  courseToMdl:'Курс к MDL', storageAndCurrency:'Хранилище и валюта', currentBalance:'Текущий баланс',
+  courseToMdl:'Курс к MDL', storageAndCurrency:'Хранилище и валюта', currencyRates:'Валюта и курс', currentBalance:'Текущий баланс', currentWeek:'Текущая неделя',
   expensesTab:'Расходы', storageTab:'Хранилище', income:'Доходы', chooseWeek:'Выбрать неделю', planned:'Запланирована', topUp:'Пополнить', withdraw:'Снять', rateUpdatedNow:'Курс обновлён',
   directHero:'Зай, тут всё просто ♥', directHeroCopy:'Смотри баланс, текущую неделю и расходы — всё главное рядом.',
   emptyWeekCopy:'Добавь первый расход — дальше всё посчитается само.', noRateYet:'Курс ещё не получен', household:'Дом', health:'Здоровье', gifts:'Подарки'
@@ -12,7 +12,7 @@ Object.assign(dict.ru,{
 Object.assign(dict.uk,{
   storageCurrencyShort:'Валюта Сховища', ratesAuto:'Оновлюється автоматично', appearance:'Зовнішній вигляд', myBudget:'Мій бюджет', calmFinance:'Спокійні фінанси для щасливого життя',
   backupTitle:'Резервна копія', exportData:'Експорт даних', importData:'Імпорт даних', allWeeks:'Усі тижні', categoriesPlan:'Категорії плану',
-  courseToMdl:'Курс до MDL', storageAndCurrency:'Сховище і валюта', currentBalance:'Поточний баланс',
+  courseToMdl:'Курс до MDL', storageAndCurrency:'Сховище і валюта', currencyRates:'Валюта і курс', currentBalance:'Поточний баланс', currentWeek:'Поточний тиждень',
   expensesTab:'Витрати', storageTab:'Сховище', income:'Доходи', chooseWeek:'Обрати тиждень', planned:'Запланований', topUp:'Поповнити', withdraw:'Зняти', rateUpdatedNow:'Курс оновлено',
   directHero:'Зай, тут усе просто ♥', directHeroCopy:'Дивись баланс, поточний тиждень і витрати — усе головне поруч.',
   emptyWeekCopy:'Додай першу витрату — далі все порахується саме.', noRateYet:'Курс ще не отримано', household:'Дім', health:'Здоров’я', gifts:'Подарунки'

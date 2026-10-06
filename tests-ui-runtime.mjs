@@ -39,7 +39,9 @@ await new Promise(resolve => setTimeout(resolve, 0));
 
 if (!app.innerHTML.includes('ct-app')) throw new Error('UI runtime failed to render the contract shell');
 if (!app.innerHTML.includes('ct-home-hero')) throw new Error('UI runtime did not render the approved home screen');
-if (app.innerHTML.includes('storageTab')) throw new Error('UI runtime exposed an untranslated storage navigation label');
+for (const leakedKey of ['storageTab', 'currentWeek', 'currencyRates']) {
+  if (app.innerHTML.includes(leakedKey)) throw new Error(`UI runtime exposed an untranslated label: ${leakedKey}`);
+}
 if (!nodes.some(node => node.className === 'onboarding ct-onboarding')) throw new Error('UI runtime did not render the contract onboarding');
 if (root.dataset.theme !== 'dark') throw new Error('fresh installation must open in the approved dark theme');
 for (const key of ['--approved-dark-hero', '--approved-light-home', '--ct-storage-art', '--ct-week-empty']) {
