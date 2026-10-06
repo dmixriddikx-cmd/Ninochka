@@ -164,32 +164,33 @@ async function connectSync(login = '', pin = '', restoring = false) {
       sync.token = auth.token;
       sync.actor = auth.actor;
       sync.login = login.trim();
-      // Persist the authenticated session immediately. Shared-budget activation
-      // is a separate data choice and must not make login disappear on reload.
       localStorage.setItem(SYNC_TOKEN, sync.token);
       localStorage.setItem(SYNC_LOGIN, sync.login);
     }
 
     const remote = await syncRequest('GET');
     sync.actor = remote.actor;
+    sync.connected = true;
+    sync.rev = remote.rev;
+    sync.staged = null;
+    sync.paused = false;
+    localStorage.setItem(SYNC_READY, '1');
+    localStorage.setItem(SYNC_REV, String(sync.rev ?? 0));
+    state.preferences.actor = sync.actor;
 
-    if (restoring && localStorage.getItem(SYNC_READY) === '1') {
-      sync.connected = true;
-      sync.rev = localStorage.getItem(SYNC_REV) || null;
-      state.preferences.actor = sync.actor;
-      if (sync.dirty) {
-        sync.paused = false;
-        queueSync();
-      } else {
-        sync.rev = remote.rev;
-        localStorage.setItem(SYNC_REV, String(sync.rev ?? 0));
-        if (remote.data) adoptRemote(remote.data);
-      }
+    if (!restoring && !localStorage.getItem(`ninochka-onboarding-${sync.actor}`)) {
+      state.preferences.onboardingSeen = false;
+    }
+
+    if (sync.dirty) {
+      queueSync();
+    } else if (remote.data) {
+      adoptRemote(remote.data);
     } else {
-      sync.staged = remote;
-      // Mark the session as restorable as soon as credentials are verified.
-      // The staged remote/local choice is still preserved below.
-      localStorage.setItem(SYNC_READY, '1');
+      sync.dirty = true;
+      localStorage.setItem(SYNC_DIRTY, '1');
+      saveLocalOnly();
+      queueSync();
     }
   } catch (error) {
     if (restoring && error.status === 401) clearSyncSession('Сессия закончилась. Войди снова.');
@@ -353,8 +354,69 @@ document.addEventListener('click', event => {
   }
 }, true);
 
+const renderBudget = render;
+
+function authScreen() {
+  const remembered = escape(sync.login || '');
+  return `<main class="ct-auth-shell">
+    <section class="ct-auth-card">
+      <div class="ct-auth-brand">
+        <div class="ct-auth-title">Ниночка <span>♡</span></div>
+        <div class="ct-auth-subtitle">СЕМЕЙНЫЙ БЮДЖЕТ</div>
+        <div class="ct-auth-motto">Наш дом <i>•</i> Наши планы <i>•</i> Вместе</div>
+      </div>
+      <form class="ct-auth-form" data-auth-form>
+        <label><span>♡</span><input type="text" autocomplete="username" data-sync-login value="${remembered}" placeholder="Логин" required></label>
+        <label><span>⌑</span><input type="password" autocomplete="current-password" data-sync-pin placeholder="Пароль" required><button type="button" class="ct-auth-eye" data-auth-eye aria-label="Показать пароль">◉</button></label>
+        <button class="ct-auth-submit" type="submit" ${sync.busy?'disabled':''}>Войти <b>→</b></button>
+      </form>
+      ${sync.error ? `<p class="ct-auth-error">${escape(sync.error)}</p>` : ''}
+      <div class="ct-auth-family"><span>Нина</span><i>♥</i><span>Вова</span></div>
+      <div class="ct-auth-note">Один бюджет на нашу новую главу ♡</div>
+    </section>
+  </main>`;
+}
+
+render = function () {
+  setDoc();
+  if (!sync.connected) {
+    modal.open && modal.close();
+    app.innerHTML = authScreen();
+    return;
+  }
+  renderBudget();
+};
+
+document.addEventListener('submit', event => {
+  const form = event.target.closest('[data-auth-form]');
+  if (!form) return;
+  event.preventDefault();
+  sync.busy = true;
+  render();
+  connectSync(
+    form.querySelector('[data-sync-login]')?.value || '',
+    form.querySelector('[data-sync-pin]')?.value || ''
+  ).finally(() => { sync.busy = false; });
+}, true);
+
+document.addEventListener('click', event => {
+  const eye = event.target.closest('[data-auth-eye]');
+  if (!eye) return;
+  const input = eye.closest('label')?.querySelector('[data-sync-pin]');
+  if (!input) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+}, true);
+
+document.addEventListener('click', event => {
+  const onboard = event.target.closest('[data-onboard="done"]');
+  if (onboard && sync.actor) localStorage.setItem(`ninochka-onboarding-${sync.actor}`, '1');
+}, true);
+
 if (SYNC_API && sync.token && localStorage.getItem(SYNC_READY) === '1') {
+  render();
   connectSync('', '', true);
+} else {
+  render();
 }
 if (SYNC_API) {
   setInterval(() => { if (!document.hidden) refreshSync(); }, 30000);
