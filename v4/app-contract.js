@@ -70,7 +70,7 @@ function contractWeekCard(ww){const spent=safe(()=>core.weekSpent(state,ww),0),f
 
 function contractHome(){const ww=activeWeekFinal(),sec=contractSecondaryBalance();return `${contractTop('home')}
 <section class="ct-home-hero ${resolvedDarkFinal()?'dark':'light'}"><div class="ct-home-hero-copy"><h1>${contractActor()==='nina'?tr('directHero'):'Мы рядом, всё под контролем ♥'}</h1><p>${contractActor()==='nina'?tr('directHeroCopy'):'Наши деньги и планы — в одном месте. Я тоже всё записываю.'}</p></div></section>
-<section class="ct-balance-card"><div><small>${tr('balance')}</small><strong>${moneyPlain(state.storage.balance)}</strong>${sec?`<span>≈ ${sec}</span>`:''}</div><button class="ct-primary" data-final-action="storage-add">＋ ${tr('topUp')}</button></section>
+<section class="ct-balance-card"><div><small>${tr('balance')}</small><strong>${moneyPlain(state.storage.balance)}</strong>${sec?`<span>≈ ${sec}</span>`:''}</div><label class="ct-balance-currency" aria-label="${tr('storageCurrencyShort')}"><select data-action="storage-currency">${core.CURRENCIES.map(c=>`<option value="${c}" ${c===state.storage.currency?'selected':''}>${contractCurrencyFlag(c)} ${c}</option>`).join('')}</select></label><button class="ct-primary" data-final-action="storage-add">＋ ${tr('topUp')}</button></section>
 ${contractQuickCategories()}${contractWeekCard(ww)}
 <div class="ct-home-actions"><button class="ct-primary" data-action="expense-add">＋ ${tr('addExpense')}</button><button class="ct-soft" data-tab="plan">▦ ${tr('plan')}</button></div>`}
 
