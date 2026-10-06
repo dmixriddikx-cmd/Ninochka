@@ -48,6 +48,35 @@ function backupLocal() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function zeroBudget() {
+  const preferences = { ...state.preferences };
+  const storageCurrency = state.storage?.currency || 'EUR';
+  const clean = core.createState();
+  clean.preferences = preferences;
+  clean.storage.currency = storageCurrency;
+  for (const month of clean.months) {
+    for (const week of month.weeks) {
+      week.fund.amount = 0;
+      week.fund.currency = storageCurrency;
+      week.fund.rate = 1;
+    }
+  }
+  return clean;
+}
+
+function resetTestData() {
+  if (!confirm('Сбросить все суммы, расходы, планы, доходы и историю? Перед сбросом скачается резервная копия.')) return;
+  if (prompt('Для подтверждения введи СБРОС')?.trim().toUpperCase() !== 'СБРОС') return;
+  backupLocal();
+  localStorage.setItem(`ninochka-before-reset-${Date.now()}`, localStorage.getItem(STORE) || '');
+  state = zeroBudget();
+  view.week = 1;
+  view.weekMode = 'detail';
+  save();
+  render();
+  notify(sync.connected ? 'Бюджет обнулён. Отправляем чистую копию в общий доступ.' : 'Тестовые данные сброшены. Все суммы теперь по нулям.');
+}
+
 async function connectSync(key, restoring = false) {
   if (!SYNC_API || !key) return;
   sync.key = key.trim(); sync.error = '';
@@ -131,6 +160,7 @@ document.addEventListener('click', event => {
   if (action === 'activate') activateSync();
   if (action === 'refresh') refreshSync();
   if (action === 'backup') backupLocal();
+  if (action === 'reset') resetTestData();
   if (action === 'use-remote') {
     if (!confirm('Местные изменения ещё не попали в общий бюджет. Скачай копию перед переходом. Открыть общую версию?')) return;
     localStorage.setItem(`ninochka-conflict-${Date.now()}`, localStorage.getItem(STORE) || '');

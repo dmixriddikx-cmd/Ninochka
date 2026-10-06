@@ -4,6 +4,11 @@ const ORIGIN = 'https://dmixriddikx-cmd.github.io';
 const PATH = '/family-budget.json'; // Relative to the dedicated Dropbox app folder.
 const MAX_BYTES = 1024 * 1024;
 
+function validBudget(data) {
+  return data?.schemaVersion === 4 && Array.isArray(data.months) &&
+    data.storage && typeof data.storage === 'object';
+}
+
 function send(res, status, body) {
   res.status(status).setHeader('Cache-Control', 'no-store').json(body);
 }
@@ -42,7 +47,7 @@ async function readBudget(token) {
   if (!response.ok) throw new Error(`Dropbox read failed (${response.status})`);
   const metadata = JSON.parse(response.headers.get('dropbox-api-result') || '{}');
   const data = await response.json();
-  if (!metadata.rev || data?.version !== 4 || !Array.isArray(data.months)) throw new Error('Shared budget is invalid');
+  if (!metadata.rev || !validBudget(data)) throw new Error('Shared budget is invalid');
   return { rev: metadata.rev, data };
 }
 
@@ -75,7 +80,7 @@ export default async function handler(req, res) {
     const token = await dropboxToken();
     if (req.method === 'GET') return send(res, 200, { ...(await readBudget(token)), actor });
     const { rev, data } = req.body || {};
-    if (!(rev === null || typeof rev === 'string') || !data || data.version !== 4 || !Array.isArray(data.months) || Buffer.byteLength(JSON.stringify(data)) > MAX_BYTES) {
+    if (!(rev === null || typeof rev === 'string') || !validBudget(data) || Buffer.byteLength(JSON.stringify(data)) > MAX_BYTES) {
       return send(res, 400, { error: 'invalid_budget' });
     }
     const result = await writeBudget(token, rev, data);

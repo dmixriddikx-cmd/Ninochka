@@ -5,7 +5,7 @@ import handler from './sync.js';
 
 const access = 'ninochka-test-key-with-enough-entropy';
 const origin = 'https://dmixriddikx-cmd.github.io';
-const budget = { version: 4, months: [], storage: { balance: 0, currency: 'EUR', history: [] } };
+const budget = { schemaVersion: 4, months: [], storage: { balance: 0, currency: 'EUR', history: [] } };
 
 function response(headers, method, body) {
   const result = { statusCode: 200, headers: {}, body: null, ended: false };
@@ -55,5 +55,22 @@ test('first write and revision conflict preserve the existing budget', async () 
     const updated = await response(headers, 'PUT', { rev: '1', data: { ...budget, storage: { balance: 42 } } });
     assert.equal(updated.body.rev, '2');
     assert.equal(remote.storage.balance, 42);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('rejects a payload that does not use the application schema', async () => {
+  process.env.NINA_KEY_SHA256 = createHash('sha256').update(access).digest('hex');
+  process.env.DROPBOX_APP_KEY = 'app';
+  process.env.DROPBOX_APP_SECRET = 'secret';
+  process.env.DROPBOX_REFRESH_TOKEN = 'refresh';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ access_token: 'test-access' }), { status: 200 });
+  try {
+    const result = await response({ origin, authorization: `Bearer ${access}` }, 'PUT', {
+      rev: null,
+      data: { version: 4, months: [], storage: { balance: 0 } }
+    });
+    assert.equal(result.statusCode, 400);
+    assert.equal(result.body.error, 'invalid_budget');
   } finally { globalThis.fetch = originalFetch; }
 });
