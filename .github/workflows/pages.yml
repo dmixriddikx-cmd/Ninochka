@@ -31,9 +31,9 @@ jobs:
           mkdir -p _site/assets
           BUILD_ID="$(git rev-parse --short HEAD)"
           sed "s/__BUILD_ID__/${BUILD_ID}/g" index.html > _site/index.html
-          cp contract.css core.js corefix.js _site/
+          cp contract.css core.js corefix.js sync-config.js _site/
           cp -r assets/* _site/assets/
-          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js > _site/app.js
+          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js > _site/app.js
           touch _site/.nojekyll
 
           node --check _site/app.js
