@@ -13,18 +13,7 @@ function renderOnboarding(i){
   document.body.append(el)
 }
 
-async function fetchRate(from,to){
- if(from===to)return 1;
- const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),8000);
- try{
-  const r=await fetch(`https://api.frankfurter.dev/v2/rate/${from.toLowerCase()}/${to.toLowerCase()}`,{signal:ctrl.signal,cache:'no-store'});
-  if(!r.ok)throw new Error('rate_http');
-  const d=await r.json();
-  if(!Number.isFinite(d.rate)||d.rate<=0)throw new Error('rate_invalid');
-  core.setRate(state,from,to,d.rate,'automatic',d.date);
-  return d.rate;
- }finally{clearTimeout(t)}
-}
+async function fetchRate(from,to){if(from===to)return 1;const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),8000);try{const r=await fetch(`https://api.frankfurter.dev/v2/rate/${from.toLowerCase()}/${to.toLowerCase()}`,{signal:ctrl.signal,cache:'no-store'});if(!r.ok)throw 0;const d=await r.json();if(!Number.isFinite(d.rate)||d.rate<=0)throw 0;core.setRate(state,from,to,d.rate,'automatic',d.date);return d.rate}finally{clearTimeout(t)}}
 function applyCurrentRatesToPlan(){const mm=m();for(const item of mm.obligations){item.rate=item.currency===state.storage.currency?1:core.getRate(state,item.currency,state.storage.currency)}for(const ww of mm.weeks){ww.fund.rate=ww.fund.currency===state.storage.currency?1:core.getRate(state,ww.fund.currency,state.storage.currency)}}
 async function refreshPlanRates(){planDraft=capturePlanDraft();try{await preparePlanRates(planDraft,{force:true});applyCurrentRatesToPlan();persist(tr('ratesUpdated'))}catch{notify(tr('rateFail'));render()}}
 async function ensureRateFor(currency){if(currency===state.storage.currency)return 1;let r=core.getRate(state,currency,state.storage.currency);if(r)return r;try{return await fetchRate(currency,state.storage.currency)}catch{throw new Error(`missing_rate:${currency}:${state.storage.currency}`)}}
@@ -34,14 +23,7 @@ function wrapForm(root){let f=root.querySelector('form');if(f)return f;f=documen
 function val(name){return modal.querySelector(`[name="${CSS.escape(name)}"]`)?.value??''}
 function errorMessage(e){const s=String(e?.message||e);if(s==='invalid_money')return tr('invalidMoney');if(s==='name_required')return tr('nameRequired');if(s.startsWith('missing_rate:'))return tr('missingRate');if(s==='storage_write_failed')return lang()==='uk'?'Не вдалося зберегти витрату':'Не удалось сохранить расход';return s}
 
-async function handleAction(action,el){
- if(action==='expense-save'){
-   if(el.dataset.busy==='1')return;
-   el.dataset.busy='1';
-   el.disabled=true;
-   el.textContent=lang()==='uk'?'Зберігаю…':'Сохраняю…';
- }
- try{
+async function handleAction(action,el){try{
  if(action==='settings')return settingsModal(); if(action==='modal-close')return closeModal(); if(action==='balance')return balanceModal(); if(action==='history')return historyModal(); if(action==='expense-add')return expenseModal(); if(action==='tutorial'){closeModal();state.preferences.onboardingSeen=false;save();return render()}
  if(action==='balance-adjust'){await ensureRateFor(val('currency'));core.adjustStorage(state,val('amount'),val('currency'),val('note'));state.storage.history[0].actor=state.preferences.actor==='volodymyr'?'volodymyr':'nina';closeModal();return persist()}
  if(action==='balance-exact'){await ensureRateFor(val('currency'));core.setStorageBalance(state,val('amount'),val('currency'),val('note'));state.storage.history[0].actor=state.preferences.actor==='volodymyr'?'volodymyr':'nina';closeModal();return persist()}
