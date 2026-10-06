@@ -94,8 +94,7 @@ function adoptRemote(data) {
   render();
 }
 
-function backupLocal() {
-  const content = localStorage.getItem(STORE);
+function backupLocal(content = localStorage.getItem(STORE)) {
   if (!content) return;
   const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
   const link = document.createElement('a');
@@ -113,31 +112,108 @@ function zeroBudget() {
   const clean = core.createState();
   clean.preferences = preferences;
   clean.storage.currency = storageCurrency;
+  clean.storage.balance = 0;
+  clean.storage.history = [];
+  clean.nbEntries = [];
+  clean.rates = {};
   for (const month of clean.months) {
+    for (const item of month.obligations) {
+      item.amount = 0;
+      item.currency = storageCurrency;
+      item.rate = 1;
+    }
     for (const week of month.weeks) {
+      week.status = 'open';
       week.fund.amount = 0;
       week.fund.currency = storageCurrency;
       week.fund.rate = 1;
+      week.expenses = [];
+      week.settlement = 0;
+      week.closedAt = null;
     }
   }
   return clean;
 }
 
-function resetTestData() {
-  if (!confirm('Сбросить все суммы, расходы, планы, доходы и историю? Перед сбросом скачается резервная копия.')) return;
+function budgetIsZero(data) {
+  if (!data || Number(data.storage?.balance || 0) !== 0) return false;
+  if ((data.storage?.history || []).length) return false;
+  if ((data.nbEntries || []).length) return false;
+  return (data.months || []).every(month =>
+    (month.obligations || []).every(item => Number(item.amount || 0) === 0) &&
+    (month.weeks || []).every(week =>
+      Number(week.fund?.amount || 0) === 0 &&
+      !(week.expenses || []).length &&
+      Number(week.settlement || 0) === 0
+    )
+  );
+}
+
+async function resetTestData() {
+  if (!confirm('Сбросить все суммы, расходы, планы, доходы и историю? Резервная копия сохранится автоматически.')) return;
   if (prompt('Для подтверждения введи СБРОС')?.trim().toUpperCase() !== 'СБРОС') return;
-  backupLocal();
-  localStorage.setItem(`ninochka-before-reset-${Date.now()}`, localStorage.getItem(STORE) || '');
+
+  const before = localStorage.getItem(STORE) || '';
+  localStorage.setItem(`ninochka-before-reset-${Date.now()}`, before);
+
   state = zeroBudget();
   view.week = 1;
   view.weekMode = 'detail';
-  save();
+  saveLocalOnly();
+  sync.dirty = Boolean(sync.connected);
+  if (sync.connected) localStorage.setItem(SYNC_DIRTY, '1');
   render();
-  notify(sync.connected
-    ? 'Бюджет обнулён. Чистая копия отправляется в общий доступ.'
-    : 'Тестовые данные сброшены. Все суммы теперь по нулям.');
-}
 
+  if (!sync.connected) {
+    try { backupLocal(before); } catch {}
+    notify('Тестовые данные сброшены. Все суммы теперь по нулям.');
+    return;
+  }
+
+  const waitStarted = Date.now();
+  sync.paused = true;
+  while (sync.busy && Date.now() - waitStarted < 12000) {
+    await new Promise(resolve => setTimeout(resolve, 120));
+  }
+
+  try {
+    let revision = Number(sync.rev || 0);
+    let result = await syncRequest('PUT', { rev: revision, data: JSON.parse(JSON.stringify(state)) });
+
+    if (result.conflict) {
+      const latest = await syncRequest('GET');
+      revision = Number(latest.rev || 0);
+      sync.rev = revision;
+      result = await syncRequest('PUT', { rev: revision, data: JSON.parse(JSON.stringify(state)) });
+    }
+    if (result.conflict) throw new Error('reset_conflict');
+
+    sync.rev = Number(result.rev);
+    localStorage.setItem(SYNC_REV, String(sync.rev));
+    const verified = await syncRequest('GET');
+    if (!budgetIsZero(verified.data)) throw new Error('reset_verify_failed');
+
+    sync.rev = Number(verified.rev);
+    sync.dirty = false;
+    sync.error = '';
+    sync.paused = false;
+    localStorage.setItem(SYNC_REV, String(sync.rev));
+    localStorage.removeItem(SYNC_DIRTY);
+    state = zeroBudget();
+    saveLocalOnly();
+    render();
+    try { backupLocal(before); } catch {}
+    notify('Готово: общий бюджет проверен и полностью обнулён.');
+  } catch (error) {
+    sync.paused = false;
+    sync.dirty = true;
+    localStorage.setItem(SYNC_DIRTY, '1');
+    saveLocalOnly();
+    render();
+    notify('Локально всё обнулено, но сервер пока не подтвердил сброс. Повтори сброс при стабильной сети.');
+    console.warn('Reset verification failed:', error);
+  }
+}
 function clearSyncSession(message = '') {
   sync.token = '';
   sync.rev = null;
