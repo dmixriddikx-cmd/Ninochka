@@ -102,3 +102,8 @@ linear-gradient(180deg,rgba(20,12,20,.24),rgba(20,12,20,.48)),var(--approved-dar
 .ct-balance-currency select{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-width:0!important;padding:0!important;border:0!important;opacity:0!important;cursor:pointer!important}
 
 .ct-auth-restoring .ct-auth-card{min-height:260px;display:grid;align-content:center}.ct-auth-restoring-mark{margin:28px auto 0;font-size:28px;color:var(--ct-pink);animation:ctAuthPulse .8s ease-in-out infinite alternate}@keyframes ctAuthPulse{to{opacity:.35;transform:scale(.92)}}
+
+/* Home balance currency: flag only, no surrounding tile. */
+.ct-balance-currency{width:36px!important;height:36px!important;border:0!important;background:transparent!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important}
+.ct-balance-flag{font-size:24px!important}
+.ct-balance-currency select{inset:-6px!important;width:48px!important;height:48px!important}
