@@ -1,4 +1,4 @@
-export const CURRENCIES = ['EUR','USD','MDL'];
+export const CURRENCIES = ['EUR','USD','MDL','UAH'];
 export const SCHEMA = 4;
 export const MONEY_LIMIT = 1_000_000_000_00;
 
