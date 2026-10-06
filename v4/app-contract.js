@@ -6,7 +6,7 @@ Object.assign(dict.ru,{
   backupTitle:'Резервная копия', exportData:'Экспорт данных', importData:'Импорт данных', allWeeks:'Все недели', categoriesPlan:'Категории плана',
   courseToMdl:'Курс к MDL', storageAndCurrency:'Хранилище и валюта', currencyRates:'Валюта и курс', currentBalance:'Текущий баланс', currentWeek:'Текущая неделя',
   expensesTab:'Расходы', storageTab:'Хранилище', income:'Доходы', chooseWeek:'Выбрать неделю', planned:'Запланирована', topUp:'Пополнить', withdraw:'Снять', rateUpdatedNow:'Курс обновлён',
-  directHero:'Зай, тут всё просто ♥', directHeroCopy:'Смотри баланс, текущую неделю и расходы — всё главное рядом.',
+  directHero:'Зай, тут всё просто ♥', directHeroCopy:'Я собрал здесь наш баланс, неделю и расходы. Чтобы у нас оставалось больше времени на главное.',
   emptyWeekCopy:'Добавь первый расход — дальше всё посчитается само.', noRateYet:'Курс ещё не получен', household:'Дом', health:'Здоровье', gifts:'Подарки'
 });
 Object.assign(dict.uk,{
@@ -14,7 +14,7 @@ Object.assign(dict.uk,{
   backupTitle:'Резервна копія', exportData:'Експорт даних', importData:'Імпорт даних', allWeeks:'Усі тижні', categoriesPlan:'Категорії плану',
   courseToMdl:'Курс до MDL', storageAndCurrency:'Сховище і валюта', currencyRates:'Валюта і курс', currentBalance:'Поточний баланс', currentWeek:'Поточний тиждень',
   expensesTab:'Витрати', storageTab:'Сховище', income:'Доходи', chooseWeek:'Обрати тиждень', planned:'Запланований', topUp:'Поповнити', withdraw:'Зняти', rateUpdatedNow:'Курс оновлено',
-  directHero:'Зай, тут усе просто ♥', directHeroCopy:'Дивись баланс, поточний тиждень і витрати — усе головне поруч.',
+  directHero:'Зай, тут усе просто ♥', directHeroCopy:'Я зібрав тут наш баланс, тиждень і витрати. Щоб у нас лишалося більше часу на головне.',
   emptyWeekCopy:'Додай першу витрату — далі все порахується саме.', noRateYet:'Курс ще не отримано', household:'Дім', health:'Здоров’я', gifts:'Подарунки'
 });
 
@@ -54,6 +54,9 @@ function contractObligationIcon(x){return x.name==='rent'?'⌂':x.name==='utilit
 function contractUsedCurrencies(){const mm=m(),s=new Set([...mm.obligations.map(x=>x.currency),...mm.weeks.map(x=>x.fund.currency)]);s.delete(state.storage.currency);return [...s]}
 function contractThemeButton(value,icon,label){return `<button class="ct-theme-choice ${state.preferences.theme===value?'active':''}" data-theme-choice="${value}"><i>${icon}</i><span>${label}</span></button>`}
 function contractSecondaryBalance(){return secondaryBalanceFinal()}
+function contractActor(){return state.preferences.actor==='volodymyr'?'volodymyr':'nina'}
+function contractActorName(id=contractActor()){return id==='volodymyr'?'Вова':'Нина'}
+function contractCurrencyFlag(currency){return ({MDL:'🇲🇩',EUR:'🇪🇺',USD:'🇺🇸'})[currency]||''}
 
 function contractNav(){const items=[['home','⌂','home'],['week','▤','expensesTab'],['plan','▦','plan'],['storage','▣','storageTab'],['more','•••','more']];return `<nav class="ct-nav">${items.map(([id,ico,key])=>`<button class="ct-nav-item ${view.tab===id?'active':''}" data-tab="${id}"><b>${ico}</b><span>${tr(key)}</span></button>`).join('')}</nav>`}
 function contractTop(kind='home'){
@@ -66,16 +69,16 @@ function contractQuickCategories(){const cats=['products','household','transport
 function contractWeekCard(ww){const spent=safe(()=>core.weekSpent(state,ww),0),fund=safe(()=>core.fundInStorage(state,ww),0),left=fund-spent,p=progressFinal(spent,fund);return `<button class="ct-week-card" data-final-action="open-week"><div class="ct-week-card-head"><div><small>${tr('currentWeek')}</small><h2>${tr('weekN')} ${ww.id}</h2><em>${weekDatesFinal(ww.id)}</em></div><span>›</span></div><div class="ct-week-pair"><div><small>${tr('weekFund')}</small><strong>${moneyPlain(ww.fund.amount,ww.fund.currency)}</strong></div><div><small>${left<0?tr('overspend'):tr('left')}</small><strong class="${left<0?'negative':'positive'}">${moneyPlain(Math.abs(left))}</strong></div></div><div class="ct-progress"><i style="width:${p.bar}%"></i></div><div class="ct-progress-copy"><span>${tr('spent')} <b>${moneyPlain(spent)}</b></span><span>${Math.round(p.left)}% ${tr('remainingPercent').toLowerCase()}</span></div></button>`}
 
 function contractHome(){const ww=activeWeekFinal(),sec=contractSecondaryBalance();return `${contractTop('home')}
-<section class="ct-home-hero ${resolvedDarkFinal()?'dark':'light'}"><div class="ct-home-hero-copy"><h1>${resolvedDarkFinal()?tr('directHero'):'Ninochka ♥'}</h1><p>${resolvedDarkFinal()?tr('directHeroCopy'):(lang()==='uk'?'Спокійніше з грошима. Більше часу на головне. ♥':'Спокойнее с деньгами. Больше времени на главное. ♥')}</p></div></section>
+<section class="ct-home-hero ${resolvedDarkFinal()?'dark':'light'}"><div class="ct-home-hero-copy"><h1>${contractActor()==='nina'?tr('directHero'):'Мы рядом, всё под контролем ♥'}</h1><p>${contractActor()==='nina'?tr('directHeroCopy'):'Наши деньги и планы — в одном месте. Я тоже всё записываю.'}</p></div></section>
 <section class="ct-balance-card"><div><small>${tr('balance')}</small><strong>${moneyPlain(state.storage.balance)}</strong>${sec?`<span>≈ ${sec}</span>`:''}</div><button class="ct-primary" data-final-action="storage-add">＋ ${tr('topUp')}</button></section>
 ${contractQuickCategories()}${contractWeekCard(ww)}
 <div class="ct-home-actions"><button class="ct-primary" data-action="expense-add">＋ ${tr('addExpense')}</button><button class="ct-soft" data-tab="plan">▦ ${tr('plan')}</button></div>`}
 
-function contractWeek(){const ww=w(),spent=safe(()=>core.weekSpent(state,ww),0),fund=safe(()=>core.fundInStorage(state,ww),0),left=fund-spent,p=progressFinal(spent,fund),first=m().weeks[0].id,last=m().weeks.at(-1).id;return `${contractTop('week')}<section class="ct-week-page">
+function contractWeek(){const ww=w(),spent=safe(()=>core.weekSpent(state,ww),0),fund=safe(()=>core.fundInStorage(state,ww),0),left=fund-spent,p=progressFinal(spent,fund),first=m().weeks[0].id,last=m().weeks.at(-1).id,incomeMode=view.moneyMode==='income',incomes=state.storage.history.filter(x=>x.type==='manual'&&x.converted>0);return `${contractTop('week')}<section class="ct-week-page">
 <div class="ct-week-heading"><button class="ct-circle" data-week-step="-1" ${ww.id<=first?'disabled':''}>‹</button><button class="ct-week-title" data-final-action="week-list"><small>${tr('currentWeek')}</small><h1>${tr('weekN')} ${ww.id}</h1><span>${weekDatesFinal(ww.id)}</span><em class="${ww.status==='closed'?'closed':'open'}">● ${ww.status==='closed'?tr('closed'):tr('open')}</em></button><button class="ct-circle" data-week-step="1" ${ww.id>=last?'disabled':''}>›</button></div>
 <section class="ct-week-main"><div class="ct-fund-row"><div><small>${tr('weekFund')}</small><strong>${moneyPlain(ww.fund.amount,ww.fund.currency)}</strong></div><button data-tab="plan">✎</button></div><div class="ct-week-stats"><div><small>${tr('spent')}</small><strong class="ct-pink">${moneyPlain(spent)}</strong></div><div><small>${left<0?tr('overspend'):tr('left')}</small><strong class="${left<0?'negative':'positive'}">${moneyPlain(Math.abs(left))}</strong></div></div><div class="ct-progress"><i style="width:${p.bar}%"></i></div></section>
-<button class="ct-primary ct-full" data-action="expense-add">＋ ${tr('addExpense')}</button><div class="ct-segment"><button class="active">${tr('expensesTab')}</button><button disabled>${tr('income')}</button></div>
-<section class="ct-expenses">${ww.expenses?.length?ww.expenses.map(x=>`<button class="ct-expense-row" data-action="expense-edit" data-id="${x.id}"><i>${contractIcon(x.category)}</i><span><b>${escape(x.name)}</b><small>${contractLabel(x.category)} · ${x.currency}</small></span><strong>${moneyPlain(x.amount,x.currency)}</strong><em>›</em></button>`).join(''):`<div class="ct-empty"><div class="ct-empty-art"></div><b>${tr('noExpenses')}</b><span>${tr('emptyWeekCopy')}</span></div>`}</section>${ww.status==='closed'?`<button class="ct-soft ct-full" data-action="week-reopen">${tr('reopenWeek')}</button>`:`<button class="ct-soft ct-full" data-action="week-close">${tr('closeWeek')}</button>`}</section>`}
+<button class="ct-primary ct-full" ${incomeMode?'data-final-action="storage-add"':'data-action="expense-add"'}>＋ ${incomeMode?'Добавить доход':tr('addExpense')}</button><div class="ct-segment"><button class="${incomeMode?'':'active'}" data-money-mode="expenses">${tr('expensesTab')}</button><button class="${incomeMode?'active':''}" data-money-mode="income">${tr('income')}</button></div>
+<section class="ct-expenses">${incomeMode?(incomes.length?incomes.map(x=>`<div class="ct-expense-row"><i>♡</i><span><b>${escape(x.note||'Пополнение')}</b><small>${contractActorName(x.actor)} · ${new Date(x.date).toLocaleDateString()}</small></span><strong class="positive">+${moneyPlain(x.converted)}</strong></div>`).join(''):`<div class="ct-empty"><b>Доходов пока нет</b><span>Добавь первое пополнение — оно появится в Хранилище.</span></div>`):(ww.expenses?.length?ww.expenses.map(x=>`<button class="ct-expense-row" data-action="expense-edit" data-id="${x.id}"><i>${contractIcon(x.category)}</i><span><b>${escape(x.name)}</b><small>${contractLabel(x.category)} · ${x.currency} · ${contractActorName(x.actor)}</small></span><strong>${moneyPlain(x.amount,x.currency)}</strong><em>›</em></button>`).join(''):`<div class="ct-empty"><div class="ct-empty-art"></div><b>${tr('noExpenses')}</b><span>${tr('emptyWeekCopy')}</span></div>`)}${incomeMode?'':ww.status==='closed'?`<button class="ct-soft ct-full" data-action="week-reopen">${tr('reopenWeek')}</button>`:`<button class="ct-soft ct-full" data-action="week-close">${tr('closeWeek')}</button>`}</section>`}
 
 function contractWeekList(){const current=activeWeekFinal();return `${contractTop('week')}<section class="ct-week-list"><h1>${tr('chooseWeek')}</h1>${m().weeks.map(ww=>{const spent=safe(()=>core.weekSpent(state,ww),0);return `<button class="ct-week-list-row ${ww.id===current.id?'current':''} ${ww.status==='closed'?'closed':''}" data-week-select="${ww.id}"><i>▣</i><span><small>${ww.id===current.id?tr('currentWeek'):tr('weekN')+' '+ww.id}</small><b>${tr('weekN')} ${ww.id}</b><em>${weekDatesFinal(ww.id)}</em><u>● ${ww.status==='closed'?tr('closed'):ww.id===current.id?tr('open'):tr('planned')}</u></span>${ww.status==='closed'?`<strong>${moneyPlain(spent)}</strong>`:'<strong>›</strong>'}</button>`}).join('')}<div class="ct-week-note">${lang()==='uk'?'Кожен тиждень — маленький крок до великих планів ♥':'Каждая неделя — маленький шаг к большим планам ♥'}</div></section>`}
 
@@ -86,9 +89,10 @@ ${used.length?`<section class="ct-card"><div class="ct-block-title"><div><small>
 <section class="ct-card ct-plan-summary">${ps?`<div><span>${tr('mandatory')}</span><b>${fmt(ps.mandatory)}</b></div><div><span>${tr('fourWeeks')}</span><b>${fmt(ps.weekly)}</b></div><div><span>${tr('planTotal')}</span><b>${fmt(ps.total)}</b></div><div><span>${tr('reserve')}</span><b class="${ps.reserve<0?'negative':'positive'}">${fmt(ps.reserve)}</b></div>`:`<p>${tr('missingRate')}</p>`}<button class="ct-primary ct-full" data-action="plan-preview">${tr('checkPlan')}</button></section></section>`}
 
 function contractStorage(){const sec=contractSecondaryBalance(),r=contractRateMdl();return `${contractTop('storage')}<section class="ct-storage-page"><section class="ct-storage-hero"><div class="ct-storage-balance"><small>${tr('currentBalance')}</small><strong>${moneyPlain(state.storage.balance)}</strong>${sec?`<span>≈ ${sec}</span>`:''}</div><div class="ct-storage-actions"><button class="ct-primary" data-final-action="storage-add">＋ ${tr('topUp')}</button><button class="ct-soft" data-final-action="storage-sub">− ${tr('withdraw')}</button></div><div class="ct-storage-art"></div></section>
-<section class="ct-card ct-rate-card"><div class="ct-block-title"><div><small>${tr('storageAndCurrency')}</small><h2>${tr('currencyRates')}</h2></div><button class="ct-link" data-final-action="refresh-storage-rate">${tr('refreshRates')}</button></div><div class="ct-rate-grid"><label><span>${tr('storageCurrencyShort')}</span><select data-action="storage-currency">${core.CURRENCIES.map(c=>`<option ${c===state.storage.currency?'selected':''}>${c}</option>`).join('')}</select></label><div><span>${tr('courseToMdl')}</span><b>${r?r.toFixed(2):'—'}</b></div></div><div class="ct-rate-line"><span>${r?`1 ${state.storage.currency} = ${r.toFixed(2)} MDL`:tr('noRateYet')}</span><button class="ct-link" data-final-action="refresh-storage-rate">↻</button></div></section></section>`}
+<section class="ct-card ct-rate-card"><div class="ct-block-title"><div><small>${tr('storageAndCurrency')}</small><h2>${tr('currencyRates')}</h2></div><button class="ct-link" data-final-action="refresh-storage-rate">${tr('refreshRates')}</button></div><div class="ct-rate-grid"><label><span>${tr('storageCurrencyShort')}</span><select data-action="storage-currency">${core.CURRENCIES.map(c=>`<option value="${c}" ${c===state.storage.currency?'selected':''}>${contractCurrencyFlag(c)} ${c}</option>`).join('')}</select></label><div><span>${tr('courseToMdl')}</span><b>${r?r.toFixed(2):'—'}</b></div></div><div class="ct-rate-line"><span>${r?`1 ${state.storage.currency} = ${r.toFixed(2)} MDL`:tr('noRateYet')}</span><button class="ct-link" data-final-action="refresh-storage-rate">↻</button></div></section></section>`}
 
 function contractMore(){const nbTotal=state.nbEntries.reduce((s,x)=>s+(x.currency===state.storage.currency?x.amount:safe(()=>core.convert(state,x.amount,x.currency),0)),0);return `${contractTop('more')}<section class="ct-more-page"><section class="ct-profile"><div class="ct-avatar">♥</div><div><h2>${tr('myBudget')}</h2><p>${tr('calmFinance')}</p></div></section>
+<section class="ct-card"><h2>Кто записывает</h2><label class="field"><span>Профиль на этом устройстве</span><select data-setting="actor"><option value="nina" ${contractActor()==='nina'?'selected':''}>Нина</option><option value="volodymyr" ${contractActor()==='volodymyr'?'selected':''}>Вова</option></select></label><p class="ct-profile-note">Записи помечаются именем. Пока данные остаются только в этом браузере; общий доступ между устройствами ещё не подключён.</p></section>
 <section class="ct-card"><h2>${tr('appearance')}</h2><div class="ct-theme-grid">${contractThemeButton('light','☀',tr('light'))}${contractThemeButton('auto','♥',tr('auto'))}${contractThemeButton('dark','☾',tr('dark'))}</div></section>
 <section class="ct-menu"><button data-tab="storage"><i>💱</i><span><b>${tr('storageCurrencyShort')}</b><small>${state.storage.currency}</small></span><em>›</em></button><button data-final-action="refresh-storage-rate"><i>↻</i><span><b>${tr('currencyRates')}</b><small>${tr('ratesAuto')}</small></span><em>›</em></button><label><i>🌐</i><span><b>${tr('language')}</b></span><select data-setting="language"><option value="ru" ${lang()==='ru'?'selected':''}>Русский</option><option value="uk" ${lang()==='uk'?'selected':''}>Українська</option></select></label><button data-action="tutorial"><i>ⓘ</i><span><b>${tr('tutorial')}</b></span><em>›</em></button></section>
 <section class="ct-card ct-nb"><div><small>${tr('nb')}</small><strong>${fmt(nbTotal)}</strong><p>${tr('nbHint')}</p></div><button class="ct-primary" data-action="nb-add">＋ ${tr('addIncome')}</button></section>
@@ -99,7 +103,13 @@ function renderOnboardingFinal(i){
   const slides=[['on1t','on1c'],['on2t','on2c'],['on3t','on3c'],['on4t','on4c']];
   const [title,copy]=slides[i],el=document.createElement('div');
   el.className='onboarding ct-onboarding';
-  el.innerHTML=`<div class="ct-onboarding-art ct-onboarding-art-${i+1}"></div><section class="ct-onboarding-sheet"><div class="ct-onboarding-index">${i+1} / ${slides.length}</div><h1>${tr(title)}</h1><p>${tr(copy)}</p><div class="ct-onboarding-dots">${slides.map((_,n)=>`<i class="${n===i?'active':''}"></i>`).join('')}</div><button class="ct-primary" data-onboard="${i<slides.length-1?i+1:'done'}">${i<slides.length-1?tr('next'):tr('start')}</button></section>`;
+  const personalCopy=[
+    'Зай, я собрал здесь наш бюджет — спокойно и без лишней суеты.',
+    'Планируй недели так, как удобно тебе. Я тоже буду участвовать.',
+    'Записывай траты в пару касаний. Свои я тоже внесу.',
+    'Баланс, планы и наши маленькие мечты — всё рядом. Я с тобой ♥'
+  ];
+  el.innerHTML=`<div class="ct-onboarding-art ct-onboarding-art-${i+1}"></div><section class="ct-onboarding-sheet"><div class="ct-onboarding-index">${i+1} / ${slides.length}</div><h1>${i===0?'Добро пожаловать ♥':i===1?'Планируй недели':i===2?'Учитывай расходы':'Всё под контролем'}</h1><p>${lang()==='ru'?personalCopy[i]:tr(copy)}</p><div class="ct-onboarding-dots">${slides.map((_,n)=>`<i class="${n===i?'active':''}"></i>`).join('')}</div><button class="ct-primary" data-onboard="${i<slides.length-1?i+1:'done'}">${i<slides.length-1?tr('next'):tr('start')}</button></section>`;
   document.body.append(el);
 }
 renderOnboarding=renderOnboardingFinal;
@@ -118,6 +128,8 @@ render=function(){setDoc();let body='';if(view.tab==='home')body=contractHome();
 document.addEventListener('click',e=>{
   const selected=e.target.closest('[data-week-select]');
   if(selected){e.preventDefault();e.stopImmediatePropagation();view.week=Number(selected.dataset.weekSelect);view.weekMode='detail';render();return}
+  const mode=e.target.closest('[data-money-mode]');
+  if(mode){e.preventDefault();e.stopImmediatePropagation();view.moneyMode=mode.dataset.moneyMode;render();return}
   const action=e.target.closest('[data-final-action]');
   if(!action)return;
   e.preventDefault();e.stopImmediatePropagation();
@@ -133,8 +145,11 @@ document.addEventListener('click',e=>{
   const action=e.target.closest('[data-final-storage]');
   if(!action)return;
   e.preventDefault();e.stopImmediatePropagation();
-  (async()=>{try{await ensureRateFor(val('currency'));const amount=val('amount');core.adjustStorage(state,action.dataset.finalStorage==='sub'?`-${amount}`:amount,val('currency'),val('note'));closeModal();persist()}catch(error){notify(errorMessage(error))}})();
+  (async()=>{try{await ensureRateFor(val('currency'));const amount=val('amount');core.adjustStorage(state,action.dataset.finalStorage==='sub'?`-${amount}`:amount,val('currency'),val('note'));state.storage.history[0].actor=contractActor();closeModal();persist()}catch(error){notify(errorMessage(error))}})();
 },true);
+document.addEventListener('change',e=>{
+  if(e.target.matches('[data-setting="actor"]')){state.preferences.actor=e.target.value==='volodymyr'?'volodymyr':'nina';persist()}
+});
 
 async function decodeContractArtwork(variable,path){
   try{
