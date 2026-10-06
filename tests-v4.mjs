@@ -30,3 +30,9 @@ eq(uahExpense.amount,112300,'UAH amount preserved');
 eq(uahExpense.category,'leisure','UAH leisure category');
 eq(c.weekSpent(s3,w3),2246,'UAH expense converts into storage currency');
 console.log('UAH integration tests PASS');
+
+const uahUsdRate=0.02222;
+let s4=c.createState();c.setRate(s4,'UAH','USD',uahUsdRate,'manual');let m4=c.month(s4),w4=m4.weeks[0];c.setWeekFund(s4,w4,'200','USD');
+const probe=c.addExpense(s4,w4,{name:'UAH live-route probe',category:'clothes',amount:'350',currency:'UAH'});
+eq(c.weekSpent(s4,w4),778,'350 UAH converts to USD cents');
+console.log('UAH 350 conversion test PASS');
