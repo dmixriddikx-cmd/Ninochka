@@ -215,6 +215,8 @@ async function connectSync(login = '', pin = '', restoring = false) {
       sync.error = error.message || 'Не удалось подключиться.';
       sync.connected = false;
     }
+  } finally {
+    if (restoring) authRestorePending = false;
   }
   render();
 }
@@ -394,11 +396,15 @@ function authScreen() {
   </main>`;
 }
 
+let authRestorePending = Boolean(SYNC_API && sync.token && localStorage.getItem(SYNC_READY) === '1');
+function authRestoreScreen(){
+  return '<main class="ct-auth-shell ct-auth-restoring" aria-busy="true"><section class="ct-auth-card"><div class="ct-auth-brand"><div class="ct-auth-title">Ниночка <span>♡</span></div><div class="ct-auth-subtitle">СЕМЕЙНЫЙ БЮДЖЕТ</div></div><div class="ct-auth-restoring-mark">♡</div></section></main>';
+}
 render = function () {
   setDoc();
   if (!sync.connected) {
     modal.open && modal.close();
-    app.innerHTML = authScreen();
+    app.innerHTML = authRestorePending ? authRestoreScreen() : authScreen();
     return;
   }
   renderBudget();
@@ -433,6 +439,7 @@ if (SYNC_API && sync.token && localStorage.getItem(SYNC_READY) === '1') {
   render();
   connectSync('', '', true);
 } else {
+  authRestorePending = false;
   render();
 }
 if (SYNC_API) {
