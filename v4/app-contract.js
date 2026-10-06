@@ -129,7 +129,7 @@ render=function(){setDoc();let body='';if(view.tab==='home')body=contractHome();
 
 document.addEventListener('click',e=>{
   const selected=e.target.closest('[data-week-select]');
-  if(selected){e.preventDefault();e.stopImmediatePropagation();view.week=Number(selected.dataset.weekSelect);view.weekMode='detail';render();return}
+  if(selected){e.preventDefault();e.stopImmediatePropagation();view.week=Number(selected.dataset.weekSelect);view.weekMode='detail'; // Initial render is owned by the auth/sync gate.return}
   const mode=e.target.closest('[data-money-mode]');
   if(mode){e.preventDefault();e.stopImmediatePropagation();view.moneyMode=mode.dataset.moneyMode;render();return}
   const action=e.target.closest('[data-final-action]');
