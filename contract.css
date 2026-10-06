@@ -95,3 +95,8 @@ linear-gradient(180deg,rgba(20,12,20,.24),rgba(20,12,20,.48)),var(--approved-dar
 @media(max-width:360px){.ct-balance-card{grid-template-columns:minmax(0,1fr) auto}.ct-balance-currency{grid-column:2;grid-row:1}.ct-balance-card>.ct-primary{grid-column:1/-1;width:100%}}
 
 .week-progress .progress-track i{background:hsl(var(--budget-hue,120) 62% 48%)!important;transition:width .32s ease,background-color .32s ease}.week-progress.over .progress-track i{background:hsl(0 72% 52%)!important}
+
+/* Home balance: currency stays selectable, but only the flag is visible. */
+.ct-balance-currency{position:relative;width:50px;height:46px;display:grid;place-items:center;border:1px solid var(--ct-line);border-radius:16px;background:var(--ct-card2);overflow:hidden}
+.ct-balance-flag{font-size:22px;line-height:1;pointer-events:none}
+.ct-balance-currency select{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-width:0!important;padding:0!important;border:0!important;opacity:0!important;cursor:pointer!important}
