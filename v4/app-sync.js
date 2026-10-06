@@ -396,7 +396,7 @@ document.addEventListener('submit', event => {
   connectSync(
     form.querySelector('[data-sync-login]')?.value || '',
     form.querySelector('[data-sync-pin]')?.value || ''
-  ).finally(() => { sync.busy = false; });
+  ).finally(() => { sync.busy = false; render(); });
 }, true);
 
 document.addEventListener('click', event => {
