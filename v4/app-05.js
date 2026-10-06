@@ -44,6 +44,20 @@ document.addEventListener('click',e=>{
   }catch(err){notify(errorMessage(err))}
 },true);
 
+// Immediate feedback prevents repeated taps while FX lookup / persistence is running.
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('[data-action="expense-save"]');
+  if(!btn)return;
+  if(btn.dataset.busy==='1'){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return;
+  }
+  btn.dataset.busy='1';
+  btn.disabled=true;
+  btn.textContent=lang()==='uk'?'Зберігаю…':'Сохраняю…';
+},true);
+
 // One-time cleanup of the accidental transport burst from testing only.
 try{
   const cleanupKey='ninochka-v4:transport-test-burst-cleaned-v1';
