@@ -1,2 +1,2 @@
-// Filled with the deployed API origin after server credentials are configured.
-globalThis.NINOCHKA_SYNC_API = '';
+// Shared family budget API.
+globalThis.NINOCHKA_SYNC_API = 'https://ninochka-sync.vercel.app';
