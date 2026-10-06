@@ -19,3 +19,14 @@ let s2=c.createState(); c.setRate(s2,'USD','EUR',0.9,'manual'); c.adjustStorage(
 const oldFundEur=c.fundInStorage(s2,m2.weeks[0]); c.changeStorageCurrency(s2,'USD',1/0.9); eq(s2.storage.currency,'USD','storage currency'); eq(s2.storage.balance,111111,'converted storage rounded'); eq(c.fundInStorage(s2,m2.weeks[0]),20000,'fund rebased to USD'); eq(oldFundEur,18000,'old fund EUR');
 let legacy={schemaVersion:3,storageCurrency:'USD',adjustments:[{amount:99999999}],preferences:{language:'ru',theme:'dark'}};let migrated=c.migrate(legacy);eq(migrated.storage.balance,0,'legacy finance reset');eq(migrated.storage.currency,'USD','legacy currency preference');eq(migrated.preferences.theme,'dark','theme preserved');
 console.log('V4 extended tests PASS');
+
+let s3=c.createState();
+if(!c.CURRENCIES.includes('UAH')) throw new Error('UAH missing from supported currencies');
+c.setRate(s3,'UAH','EUR',0.02,'manual');
+let m3=c.month(s3),w3=m3.weeks[0];
+c.setWeekFund(s3,w3,'200','EUR');
+const uahExpense=c.addExpense(s3,w3,{name:'Проверка UAH',category:'leisure',amount:'1123',currency:'UAH'});
+eq(uahExpense.amount,112300,'UAH amount preserved');
+eq(uahExpense.category,'leisure','UAH leisure category');
+eq(c.weekSpent(s3,w3),2246,'UAH expense converts into storage currency');
+console.log('UAH integration tests PASS');
