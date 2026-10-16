@@ -38,6 +38,8 @@ The owner's current instruction authorizes a controlled release once gates pass.
 - Closed-week settlements rebase with Storage currency, preserving correction,
   savings and reopening math. Signed manual expense corrections survive API
   validation; weekly fund allocations remain nonnegative.
+- Multi-screenshot staging and acknowledgment handle 140 rows in 50/50/40
+  API chunks with one final family confirmation. Provider failures remain visible.
 - Review supports merchant, amount, currency and date corrections. Local edits
   during importer preflight cannot be replaced or silently sent with a changed
   remote revision. Stable import IDs are checked through cloud readback.

@@ -82,7 +82,7 @@ export default async function handler(req,res){
       body:JSON.stringify({
         model:process.env.VNN_SCAN_MODEL||'gpt-4o-mini',
         store:false,
-        max_completion_tokens:1800,
+        max_completion_tokens:6000,
         response_format:{type:'json_object'},
         messages:[
           {role:'system',content:'Return only a valid JSON object. '+PROMPT},

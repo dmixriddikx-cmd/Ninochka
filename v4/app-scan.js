@@ -82,6 +82,7 @@ async function scanBankFiles(files){
   bankScan.busy=true;
   render();
   let declined=0, uncertain=0, failed=0;
+  let firstError='';
   const items=[];
   try{
     for(const file of selection){
@@ -93,16 +94,22 @@ async function scanBankFiles(files){
         if(Array.isArray(output.items))items.push(...output.items);
       }catch(error){
         failed++;
+        if (!firstError) firstError=error.message || 'Не удалось обработать скриншот';
         if(selection.length===1)throw error;
       }
     }
     const unique = [...new Map(items.map(x=>[x.id,x])).values()];
-    if(unique.length>50)throw new Error('Слишком много операций за один раз');
+    if(unique.length>200)throw new Error('Слишком много операций за один раз');
+    if(!unique.length && failed)throw new Error(firstError);
     let queued=0, duplicates=0;
     if(unique.length){
-      const staged=await inboxRequest('POST',{action:'stage-recognized',items:unique});
-      queued=Number(staged.accepted||0);
-      duplicates=Number(staged.duplicates||0);
+      // Several screenshots can exceed the API's 50-row request limit. Keep the
+      // single final family confirmation, staging in bounded private chunks.
+      for(let offset=0;offset<unique.length;offset+=50){
+        const staged=await inboxRequest('POST',{action:'stage-recognized',items:unique.slice(offset,offset+50)});
+        queued+=Number(staged.accepted||0);
+        duplicates+=Number(staged.duplicates||0);
+      }
       await refreshExpenseInbox();
     }
     notify('В очередь: '+queued+' · Дубли: '+duplicates+' · Отклонено/ожидает: '+
@@ -111,6 +118,7 @@ async function scanBankFiles(files){
     notify(error.message||'Не удалось обработать скриншоты');
   }finally{
     bankScan.busy=false;
+    await refreshExpenseInbox();
     render();
   }
 }

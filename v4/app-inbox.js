@@ -60,6 +60,11 @@ async function inboxRequest(method, body) {
   }
   return data;
 }
+async function inboxAcknowledge(ids) {
+  for (let offset = 0; offset < ids.length; offset += 50) {
+    await inboxRequest('PATCH', { ids: ids.slice(offset, offset + 50) });
+  }
+}
 async function refreshExpenseInbox() {
   if (!sync.connected || expenseInbox.loading || expenseInbox.applying) return;
   expenseInbox.loading = true;
@@ -71,7 +76,7 @@ async function refreshExpenseInbox() {
     const acknowledged = expenseInbox.items.filter(item => inboxPreviouslyRecorded(item)).map(x => x.id);
     if (acknowledged.length && !sync.dirty && !sync.paused) {
       // Budget is already saved: acknowledgement is bookkeeping, not a second approval.
-      await inboxRequest('PATCH', { ids: acknowledged }).catch(() => {});
+      await inboxAcknowledge(acknowledged).catch(() => {});
       expenseInbox.items = expenseInbox.items.filter(x => !acknowledged.includes(x.id));
     }
   } catch (error) {
@@ -244,7 +249,7 @@ async function applyExpenseInbox() {
     sync.rev = Number(verified.rev);
     localStorage.setItem(SYNC_REV, String(sync.rev));
     adoptRemote(verified.data);
-    try { await inboxRequest('PATCH', { ids: selected.map(x => x.id) }); }
+    try { await inboxAcknowledge(selected.map(x => x.id)); }
     catch { /* Imported rows are recognized by importId on the next refresh. */ }
     expenseInbox.items = expenseInbox.items.filter(x => !selected.some(s => s.id === x.id));
     closeModal();
