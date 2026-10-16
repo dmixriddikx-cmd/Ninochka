@@ -23,7 +23,6 @@ export function bankRows(raw, imageDigest) {
     throw new Error('invalid_recognition');
   const accepted=[], excluded=[], uncertain=[];
   const seen = new Set();
-  const occurrences = new Map();
   raw.transactions.forEach((t,i) => {
     if (!t || typeof t !== 'object') { uncertain.push({reason:'missing_details',label:''}); return; }
     const result=bankOutcome({
@@ -53,15 +52,11 @@ export function bankRows(raw, imageDigest) {
     }
     const bank=String(t.bank||'').trim().toLowerCase().replace(/\s+/g,' ').slice(0,90);
     const ref=String(t.reference||'').trim().toLowerCase().slice(0,100);
-    const time=String(t.time||'').trim().slice(0,30);
-    // Bank reference or timestamp is ideal for deduplication. Without either,
-    // identify the row inside this screenshot. Never conflate two purchases
-    // for identical amounts at one merchant on the same day.
-    const timed = [bank,time,date,name.toLowerCase(),currency,amount].join('|');
-    const occurrence = occurrences.get(timed) || 0;
-    occurrences.set(timed, occurrence + 1);
+    // Only a bank reference proves identity across different screenshots.
+    // A timestamp (especially minute precision) cannot distinguish two genuine
+    // identical purchases. Without a reference keep screenshot-row identity;
+    // similar charges across images are flagged for human review in VNN.
     const identity = ref ? ['reference',bank,ref].join('|')
-      : time ? ['timed',timed,occurrence].join('|')
       : ['screenshot',imageDigest,i].join('|');
     const id='scan_'+createHash('sha256').update(identity).digest('hex').slice(0,40);
     if(seen.has(id))return;

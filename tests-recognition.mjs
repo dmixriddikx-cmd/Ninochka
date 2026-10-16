@@ -63,3 +63,7 @@ assert.equal(bankRows({transactions:[withRef]},'a').items[0].id,
 const atSameTime={...withRef,reference:null,time:'12:00'};
 assert.equal(bankRows({transactions:[atSameTime,atSameTime]},'a').items.length,2,
   'Minute-only times cannot prove that identical purchases are one charge');
+
+assert.notEqual(bankRows({transactions:[atSameTime]},'first-image').items[0].id,
+  bankRows({transactions:[atSameTime]},'second-image').items[0].id,
+  'A timestamp without a bank reference cannot prove identity across images');
