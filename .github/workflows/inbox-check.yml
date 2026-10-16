@@ -39,6 +39,7 @@ jobs:
       - name: Static JavaScript verification
         run: |
           node --check sync-service/api/inbox.js
+          node --check scripts/import-private-inbox.mjs
           node --check sync-service/api/recognize.js
           node --check sync-service/lib/recognition.js
           node --check v4/app-scan.js
@@ -56,6 +57,7 @@ jobs:
           node tests-inbox.mjs
           node tests-inbox-dedupe.mjs
           node tests-inbox-validation.mjs
+          node tests-importer.mjs
           node tests-transaction-status.mjs
           node tests-recognition.mjs
           node tests-auth.mjs
