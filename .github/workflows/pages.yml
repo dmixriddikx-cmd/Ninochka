@@ -40,7 +40,7 @@ jobs:
           cp manifest.webmanifest _site/
           python -m pip install --disable-pip-version-check --quiet 'CairoSVG==2.8.2'
           python scripts/build-vnn-icons.py _site
-          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js v4/app-inbox.js v4/app-quick.js > _site/app.js
+          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js v4/app-inbox.js v4/app-quick.js v4/app-scan.js > _site/app.js
           touch _site/.nojekyll
 
           node --check _site/app.js
@@ -49,6 +49,7 @@ jobs:
           node tests-v4.mjs
           node tests-inbox.mjs
           node tests-transaction-status.mjs
+          node tests-recognition.mjs
           node --test sync-service/quick-entry.test.mjs
           node tests-ui-contract.mjs _site
           node tests-ui-runtime.mjs _site
