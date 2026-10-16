@@ -1,7 +1,7 @@
 // Per-transaction bank outcome guard for screenshot recognition / inbox ingestion.
 // Only consider text attached to THIS transaction, never an entire screenshot
 // containing multiple rows (where a decline label may belong to another row).
-const DECLINED = /(?:отклон(?:ен[аоы]?|ено|ена|ено\s+банком)|отказано|не\s+прош[её]л|не\s+выполнен[ао]?|не\s+провед[её]н[ао]?|відхилен[аоі]?|відмовлено|не\s+виконан[ао]?|declined|rejected|denied\s+by\s+(?:the\s+)?bank|payment\s+failed|transaction\s+failed|unsuccessful|not\s+approved)/i;
+const DECLINED = /(?:отклон(?:ен[аоы]?|ено|ена|ено\s+банком)|отказано|не\s+прош[её]л|не\s+выполнен[ао]?|не\s+провед[её]н[ао]?|відхилен[аоі]?|відмовлено|не\s+виконан[ао]?|declined|rejected|denied\s+by\s+(?:the\s+)?bank|\bfailed\b|\berror\b|payment\s+failed|transaction\s+failed|unsuccessful|not\s+approved)/i;
 const UNSETTLED = /(?:^|\b)(?:pending|awaiting\s+approval|authorization\s+only)(?:\b|$)|(?:в\s+обработке|ожидает\s+подтверждения|очікує\s+підтвердження)/i;
 
 function label(value) {
@@ -20,8 +20,8 @@ export function bankOutcome(item) {
   const txt = fields.map(label).filter(Boolean).join(' | ');
   if (DECLINED.test(txt)) return 'declined';
   const bankOnly = [item.bankStatus, item.transactionStatus, item.paymentStatus,
-    item.statusText].map(label).join(' | ');
-  if (UNSETTLED.test(bankOnly)) return 'unsettled';
+    item.statusText, item.status !== 'pending' ? item.status : ''].map(label).join(' | ');
+  if (UNSETTLED.test(bankOnly) || /unknown|unconfirmed|неизвест|невідом/i.test(bankOnly)) return 'unsettled';
   return 'review';
 }
 

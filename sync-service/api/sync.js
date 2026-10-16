@@ -1,18 +1,31 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
-import { del, get, put } from '@vercel/blob';
+import { put } from '@vercel/blob';
+import { readDocument, replaceDocument, storagePath, WriteConflict } from '../lib/blob-store.js';
 import { applyQuickExpense, QuickError } from '../lib/quick-entry.js';
 import { signedActor } from '../lib/token-auth.js';
 
 const ORIGIN = 'https://dmixriddikx-cmd.github.io';
 const DATA_PATH = 'family-budget.json';
-const LOCK_PATH = 'family-budget.lock';
 const MAX_BYTES = 1024 * 1024;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const QUICK_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 function validBudget(data) {
+  const currencies = ['EUR', 'USD', 'MDL', 'UAH'];
+  const money = item => item && Number.isSafeInteger(item.amount) &&
+    item.amount >= 0 && currencies.includes(item.currency) &&
+    (item.rate == null || (Number.isFinite(item.rate) && item.rate > 0));
   return data?.schemaVersion === 4 && Array.isArray(data.months) &&
-    data.storage && typeof data.storage === 'object';
+    new Set(data.months.map(m => m?.id)).size === data.months.length &&
+    data.storage && Number.isSafeInteger(data.storage.balance) &&
+    currencies.includes(data.storage.currency) && Array.isArray(data.storage.history) &&
+    data.months.every(m => m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m.id) &&
+      Array.isArray(m.weeks) && m.weeks.length === 4 &&
+      new Set(m.weeks.map(w => w?.id)).size === 4 &&
+      m.weeks.every(w => w && [1,2,3,4].includes(w.id) &&
+        ['open','closed'].includes(w.status) && money(w.fund) &&
+        Number.isSafeInteger(w.settlement) && Array.isArray(w.expenses) &&
+        w.expenses.every(money)));
 }
 
 function send(res, status, body) {
@@ -71,130 +84,55 @@ function issueQuickToken(actor) {
 
 const actorFromQuickToken = req => signedActor(req, 'quick-expense');
 
-async function streamText(stream) {
-  return new Response(stream).text();
-}
-
-async function readJsonBlob(path) {
-  const result = await get(path, { access: 'private', useCache: false });
-  if (!result) return null;
-  return JSON.parse(await streamText(result.stream));
-}
-
-async function readBudget() {
-  const envelope = await readJsonBlob(DATA_PATH);
-  if (!envelope) return { rev: 0, data: null, updatedAt: null, updatedBy: null };
+async function readBudgetSnapshot() {
+  const snapshot = await readDocument(DATA_PATH);
+  const envelope = snapshot.data;
+  if (!envelope) return { ...snapshot, data: { rev: 0, data: null, updatedAt: null, updatedBy: null } };
   if (!Number.isInteger(envelope.rev) || envelope.rev < 1 || !validBudget(envelope.data)) {
     throw new Error('Shared budget is invalid');
   }
-  return envelope;
+  return snapshot;
 }
+async function readBudget() { return (await readBudgetSnapshot()).data; }
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-async function acquireLock() {
-  const id = randomUUID();
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    try {
-      await put(LOCK_PATH, JSON.stringify({ id, createdAt: Date.now() }), {
-        access: 'private',
-        addRandomSuffix: false,
-        allowOverwrite: false,
-        contentType: 'application/json'
-      });
-      return id;
-    } catch {
-      try {
-        const lock = await readJsonBlob(LOCK_PATH);
-        if (lock?.createdAt && Date.now() - Number(lock.createdAt) > 15000) {
-          await del(LOCK_PATH);
-          continue;
-        }
-      } catch {
-        // Another request may have released the lock between operations.
-      }
-      await sleep(120);
-    }
+async function commitBudget(snapshot, actor, data) {
+  const current = snapshot.data;
+  if (current.data) {
+    await put(storagePath(`history/${Date.now()}-${current.rev}-${actor}-${randomUUID()}.json`),
+      JSON.stringify({ ...current, archivedAt: new Date().toISOString(), archivedBy: actor }),
+      { access: 'private', addRandomSuffix: false, contentType: 'application/json' });
   }
-  return null;
+  const next = { rev: current.rev + 1, data,
+    updatedAt: new Date().toISOString(), updatedBy: actor };
+  await replaceDocument(DATA_PATH, snapshot, next);
+  return next;
 }
-
-async function releaseLock(lockId) {
-  // A previous writer must never clear the lock of a newer writer.
-  // In case of a Blob read failure, leave the lock for stale-lock recovery.
-  if (!lockId) return;
-  try {
-    const current = await readJsonBlob(LOCK_PATH);
-    if (current?.id !== lockId) return;
-    await del(LOCK_PATH);
-  } catch {
-    // Avoid deleting an unverified lock owner.
-  }
-}
-
 async function writeBudget(actor, expectedRev, data) {
-  const lockId = await acquireLock();
-  if (!lockId) return { busy: true };
-
-  try {
-    const current = await readBudget();
-    if (Number(expectedRev) !== Number(current.rev)) {
-      return { conflict: true, current };
-    }
-
-    if (current.data) {
-      await put(
-        `history/${Date.now()}-${current.rev}-${actor}-${randomUUID()}.json`,
-        JSON.stringify({ ...current, archivedAt: new Date().toISOString(), archivedBy: actor }),
-        { access: 'private', addRandomSuffix: false, contentType: 'application/json' }
-      );
-    }
-
-    const next = {
-      rev: current.rev + 1,
-      data,
-      updatedAt: new Date().toISOString(),
-      updatedBy: actor
-    };
-    await put(DATA_PATH, JSON.stringify(next), {
-      access: 'private',
-      addRandomSuffix: false,
-      allowOverwrite: Boolean(current.data),
-      contentType: 'application/json'
-    });
-    return next;
-  } finally {
-    await releaseLock(lockId);
+  const snapshot = await readBudgetSnapshot();
+  if (expectedRev !== snapshot.data.rev) return { conflict: true, current: snapshot.data };
+  try { return await commitBudget(snapshot, actor, data); }
+  catch (error) {
+    if (!(error instanceof WriteConflict)) throw error;
+    return { conflict: true, current: await readBudget() };
   }
 }
-
 async function writeQuickBudget(actor, payload) {
-  const lockId = await acquireLock();
-  if (!lockId) return { busy: true };
-  try {
-    const current = await readBudget();
+  // Recompute against the winning revision; never retry an unconditional overwrite.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const snapshot = await readBudgetSnapshot();
+    const current = snapshot.data;
     if (!current.data) throw new QuickError('budget_not_initialized', 409);
     const draft = structuredClone(current.data);
     const result = applyQuickExpense(draft, actor, payload);
     if (result.duplicate) return { duplicate: true, rev: current.rev };
-    const json = JSON.stringify(draft);
-    if (Buffer.byteLength(json) > MAX_BYTES) throw new QuickError('budget_too_large', 409);
-    await put(
-      `history/${Date.now()}-${current.rev}-${actor}-${randomUUID()}.json`,
-      JSON.stringify({ ...current, archivedAt: new Date().toISOString(), archivedBy: actor }),
-      { access: 'private', addRandomSuffix: false, contentType: 'application/json' }
-    );
-    const next = { rev: current.rev + 1, data: draft,
-      updatedAt: new Date().toISOString(), updatedBy: actor };
-    await put(DATA_PATH, JSON.stringify(next), {
-      access: 'private', addRandomSuffix: false, allowOverwrite: true,
-      contentType: 'application/json'
-    });
-    return { duplicate: false, rev: next.rev, monthId: result.monthId,
-      weekId: result.weekId, currency: result.row.currency, amountMinor: result.row.amount };
-  } finally {
-    await releaseLock(lockId);
+    if (Buffer.byteLength(JSON.stringify(draft)) > MAX_BYTES) throw new QuickError('budget_too_large', 409);
+    try {
+      const next = await commitBudget(snapshot, actor, draft);
+      return { duplicate: false, rev: next.rev, monthId: result.monthId,
+        weekId: result.weekId, currency: result.row.currency, amountMinor: result.row.amount };
+    } catch (error) { if (!(error instanceof WriteConflict)) throw error; }
   }
+  return { busy: true };
 }
 
 export default async function handler(req, res) {
@@ -234,7 +172,7 @@ export default async function handler(req, res) {
       } catch (error) {
         if (error instanceof QuickError)
           return send(res, error.status, { error: error.message });
-        console.error('Quick expense unavailable:', error?.message || error);
+        console.error('Quick expense unavailable');
         return send(res, 503, { error: 'quick_unavailable' });
       }
     }
@@ -253,7 +191,7 @@ export default async function handler(req, res) {
 
     const { rev, data } = req.body || {};
     const serialized = JSON.stringify(data);
-    if (!Number.isInteger(Number(rev)) || Number(rev) < 0 || !validBudget(data) || Buffer.byteLength(serialized) > MAX_BYTES) {
+    if (!Number.isSafeInteger(rev) || rev < 0 || !validBudget(data) || Buffer.byteLength(serialized) > MAX_BYTES) {
       return send(res, 400, { error: 'invalid_budget' });
     }
 
@@ -262,7 +200,7 @@ export default async function handler(req, res) {
     if (result.conflict) return send(res, 409, { error: 'revision_conflict', ...result.current });
     return send(res, 200, { rev: result.rev, actor, updatedAt: result.updatedAt });
   } catch (error) {
-    console.error('Ninochka sync:', error?.message || error);
+    console.error('Ninochka sync unavailable');
     return send(res, 503, { error: 'sync_unavailable' });
   }
 }

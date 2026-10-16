@@ -5,23 +5,6 @@ on:
     branches: ["feature/charlie-expense-inbox-20261015"]
   pull_request:
     branches: ["main"]
-    paths:
-      - "v4/app-inbox.js"
-      - "sync-service/api/inbox.js"
-      - "sync-service/lib/token-auth.js"
-      - "sync-service/lib/recognition.js"
-      - "sync-service/api/sync.js"
-      - "sync-service/api/recognize.js"
-      - "tests-auth.mjs"
-      - "sync-service/lib/token-auth.js"
-      - "sync-service/lib/recognition.js"
-      - "sync-service/api/sync.js"
-      - "sync-service/api/recognize.js"
-      - "tests-auth.mjs"
-      - "tests-inbox.mjs"
-      - "tests-sync-lock.mjs"
-      - ".github/workflows/pages.yml"
-      - ".github/workflows/inbox-check.yml"
 
 permissions:
   contents: read
@@ -37,6 +20,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install pinned backend dependencies
+        run: npm ci --prefix sync-service --ignore-scripts
       - name: Static JavaScript verification
         run: |
           node --check sync-service/api/inbox.js
@@ -49,7 +34,7 @@ jobs:
           node --check sync-service/lib/quick-entry.js
           node --check sync-service/lib/transaction-status.js
           node --check sync-service/lib/token-auth.js
-          node --check sync-service/lib/token-auth.js
+          node --check sync-service/lib/blob-store.js
           node --check v4/app-quick.js
           node --check v4/app-inbox.js
           cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js v4/app-inbox.js v4/app-quick.js v4/app-scan.js > app.js
@@ -63,8 +48,8 @@ jobs:
           node tests-transaction-status.mjs
           node tests-recognition.mjs
           node tests-auth.mjs
-          node tests-sync-lock.mjs
-          node tests-auth.mjs
+          npm test --prefix sync-service
+          node tests-sync-browser.mjs
           node tests-api-recognition.mjs
           node --test sync-service/quick-entry.test.mjs
           node tests-v4.mjs
@@ -79,3 +64,9 @@ jobs:
           test -s _site/assets/vnn-icon-512.png
           node tests-ui-contract.mjs _site
           node tests-ui-runtime.mjs _site
+      - name: Mobile synthetic browser verification
+        run: |
+          npm ci --prefix tools/browser --ignore-scripts
+          cd tools/browser
+          npx playwright install --with-deps chromium
+          npm test

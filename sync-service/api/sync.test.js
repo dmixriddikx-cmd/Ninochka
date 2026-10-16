@@ -1,76 +1,141 @@
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import handler from './sync.js';
+import { createHmac, createHash } from 'node:crypto';
 
-const access = 'ninochka-test-key-with-enough-entropy';
+// In-memory model of Blob's server-side conditional-write contract. No remote I/O.
+const documents = new Map();
+let serial = 0;
+let beforeWrite = null;
+class BlobPreconditionFailedError extends Error {}
+mock.module('@vercel/blob', { exports: {
+  BlobPreconditionFailedError,
+  get: async path => {
+    const found = documents.get(path);
+    return found ? { stream: new Response(found.body).body, blob: { etag: found.etag } } : null;
+  },
+  put: async (path, body, options) => {
+    if (beforeWrite && !path.includes('history/')) await beforeWrite(path);
+    const current = documents.get(path);
+    if ((options.ifMatch && current?.etag !== options.ifMatch) ||
+        (options.allowOverwrite === false && current)) throw new BlobPreconditionFailedError();
+    assert.ok(options.ifMatch || options.allowOverwrite === false || path.includes('history/'), 'no unconditional document overwrites');
+    documents.set(path, { body, etag: 'etag-' + (++serial) });
+  }
+}});
+const { default: sync } = await import('./sync.js');
+const { default: inbox } = await import('./inbox.js');
+const { storagePath, readDocument, replaceDocument, WriteConflict } = await import('../lib/blob-store.js');
 const origin = 'https://dmixriddikx-cmd.github.io';
-const budget = { schemaVersion: 4, months: [], storage: { balance: 0, currency: 'EUR', history: [] } };
-
-function response(headers, method, body) {
-  const result = { statusCode: 200, headers: {}, body: null, ended: false };
-  const res = {
-    status(code) { result.statusCode = code; return this; },
-    setHeader(key, value) { result.headers[key] = value; return this; },
-    json(value) { result.body = value; return this; },
-    end() { result.ended = true; return this; }
-  };
-  return handler({ headers, method, body }, res).then(() => result);
+process.env.NINOCHKA_SESSION_SECRET = 'synthetic-session-secret';
+process.env.NINOCHKA_INBOX_INGEST_TOKEN = 'synthetic-ingest';
+const token = (actor='nina', purpose='session', expiresAt=Date.now()+3600000) => {
+  const payload = Buffer.from(JSON.stringify({actor,purpose,expiresAt})).toString('base64url');
+  return payload+'.'+createHmac('sha256',process.env.NINOCHKA_SESSION_SECRET).update(payload).digest('base64url');
+};
+async function call(handler, method, body, auth=token(), source=origin) {
+  const result = { statusCode:200, headers:{} };
+  const res = { status(n){result.statusCode=n;return this;},setHeader(k,v){result.headers[k]=v;return this;},
+    json(value){result.body=value;return this;},end(){return this;} };
+  await handler({ method, body, headers:{...(source?{origin:source}:{}),authorization:'Bearer '+auth} },res);
+  return result;
 }
+function budget() { return {schemaVersion:4,months:[{id:'2026-10',weeks:[1,2,3,4].map(id=>({id,status:'closed',fund:{amount:0,currency:'EUR',rate:1},expenses:[],settlement:0}))}],storage:{balance:0,currency:'EUR',history:[]},rates:{USD_EUR:{value:0.9}}}; }
+function barrier(count) {
+  let arrived=0, release;
+  const ready=new Promise(ok=>release=ok);
+  return async()=>{ if (++arrived===count) release(); if(arrived<=count) await ready; };
+}
+const row = id => ({id,name:'Synthetic Coffee',date:'2026-10-14',amount:450,currency:'EUR',category:'products',bankStatus:'Completed'});
 
-test('authenticates both people and rejects other origins', async () => {
-  process.env.NINA_KEY_SHA256 = createHash('sha256').update(access).digest('hex');
-  const denied = await response({ origin: 'https://evil.example', authorization: `Bearer ${access}` }, 'GET');
-  assert.equal(denied.statusCode, 403);
-  const unknown = await response({ origin, authorization: 'Bearer wrong-key-with-enough-entropy' }, 'GET');
-  assert.equal(unknown.statusCode, 401);
+test('auth, CORS, login, token separation and invalid payloads', async()=>{
+  process.env.NINA_CREDENTIAL_SHA256=createHash('sha256').update('нина\0synthetic-pin').digest('hex');
+  assert.equal((await call(sync,'POST',{action:'login',login:'Нина',pin:'synthetic-pin'})).statusCode,200);
+  assert.equal((await call(sync,'POST',{action:'login',login:'Нина',pin:'wrong'})).statusCode,401);
+  assert.equal((await call(sync,'GET',null,token(),'https://evil.example')).statusCode,403);
+  assert.equal((await call(sync,'GET',null,'bad')).statusCode,401);
+  assert.equal((await call(sync,'GET',null,token('nina','session',0))).statusCode,401);
+  assert.equal((await call(sync,'GET',null,token('nina','quick-expense'))).statusCode,401);
+  assert.equal((await call(inbox,'GET',null,token('nina','quick-expense'))).statusCode,401);
+  assert.equal((await call(sync,'PUT',{rev:null,data:budget()})).statusCode,400);
+  assert.equal((await call(sync,'PUT',{rev:0,data:{version:4}})).statusCode,400);
+  const fiveWeeks=budget();fiveWeeks.months[0].weeks.push({...fiveWeeks.months[0].weeks[0],id:5});
+  assert.equal((await call(sync,'PUT',{rev:0,data:fiveWeeks})).statusCode,400);
+  const badMoney=budget();badMoney.storage.balance=0.1;
+  assert.equal((await call(sync,'PUT',{rev:0,data:badMoney})).statusCode,400);
+  const options=await call(sync,'OPTIONS');
+  assert.equal(options.statusCode,204);
+  assert.equal(options.headers['Access-Control-Allow-Origin'],origin);
 });
 
-test('first write and revision conflict preserve the existing budget', async () => {
-  process.env.NINA_KEY_SHA256 = createHash('sha256').update(access).digest('hex');
-  process.env.DROPBOX_APP_KEY = 'app';
-  process.env.DROPBOX_APP_SECRET = 'secret';
-  process.env.DROPBOX_REFRESH_TOKEN = 'refresh';
-  let remote = null, rev = 0;
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url, options) => {
-    if (url.includes('/oauth2/token')) return new Response(JSON.stringify({ access_token: 'test-access' }), { status: 200 });
-    if (url.includes('/files/download')) {
-      if (!remote) return new Response(JSON.stringify({ error: { '.tag': 'path', path: { '.tag': 'not_found' } } }), { status: 409 });
-      return new Response(JSON.stringify(remote), { status: 200, headers: { 'dropbox-api-result': JSON.stringify({ rev: String(rev) }) } });
-    }
-    const args = JSON.parse(options.headers['Dropbox-API-Arg']);
-    if ((args.mode === 'add' && remote) || (args.mode?.update && args.mode.update !== String(rev))) return new Response('{}', { status: 409 });
-    remote = JSON.parse(options.body); rev++;
-    return new Response(JSON.stringify({ rev: String(rev) }), { status: 200 });
-  };
-  try {
-    const headers = { origin, authorization: `Bearer ${access}` };
-    const first = await response(headers, 'PUT', { rev: null, data: budget });
-    assert.equal(first.body.rev, '1');
-    const conflict = await response(headers, 'PUT', { rev: null, data: { ...budget, storage: { balance: 999 } } });
-    assert.equal(conflict.statusCode, 409);
-    assert.equal(conflict.body.rev, '1');
-    assert.equal(conflict.body.data.storage.balance, 0);
-    const updated = await response(headers, 'PUT', { rev: '1', data: { ...budget, storage: { balance: 42 } } });
-    assert.equal(updated.body.rev, '2');
-    assert.equal(remote.storage.balance, 42);
-  } finally { globalThis.fetch = originalFetch; }
+test('concurrent first creates and updates have one winner and preserve revision',async()=>{
+  documents.clear(); beforeWrite=barrier(2);
+  const first=await Promise.all([call(sync,'PUT',{rev:0,data:budget()}),call(sync,'PUT',{rev:0,data:budget()},token('volodymyr'))]);
+  beforeWrite=null;
+  assert.deepEqual(first.map(x=>x.statusCode).sort(),[200,409]);
+  beforeWrite=barrier(2);
+  const updates=await Promise.all([11,22].map(balance=>call(sync,'PUT',{rev:1,data:{...budget(),storage:{...budget().storage,balance}}})));
+  beforeWrite=null;
+  assert.deepEqual(updates.map(x=>x.statusCode).sort(),[200,409]);
+  const winner=updates.find(x=>x.statusCode===200);
+  assert.equal(winner.body.rev,2);
+  const nina=await call(sync,'GET'); const vova=await call(sync,'GET',null,token('volodymyr'));
+  assert.deepEqual(nina.body.data,vova.body.data);
+  assert.equal(nina.body.rev,2);
 });
 
-test('rejects a payload that does not use the application schema', async () => {
-  process.env.NINA_KEY_SHA256 = createHash('sha256').update(access).digest('hex');
-  process.env.DROPBOX_APP_KEY = 'app';
-  process.env.DROPBOX_APP_SECRET = 'secret';
-  process.env.DROPBOX_REFRESH_TOKEN = 'refresh';
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify({ access_token: 'test-access' }), { status: 200 });
+test('stale snapshot cannot overwrite a newer document, including after arbitrary delay',async()=>{
+  const old=await readDocument('family-budget.json');
+  const current={...old.data,rev:old.data.rev+1};
+  await replaceDocument('family-budget.json',old,current);
+  await assert.rejects(replaceDocument('family-budget.json',old,{...old.data,rev:999}),WriteConflict);
+  assert.equal((await readDocument('family-budget.json')).data.rev,current.rev);
+});
+
+test('concurrent quick adds recompute, retry is idempotent, negative FX balance is exact',async()=>{
+  documents.clear(); await call(sync,'PUT',{rev:0,data:budget()});
+  const quick=token('nina','quick-expense');
+  const payload={action:'quick-add',id:'synthetic-001',date:'2026-10-14',amount:'4.50',currency:'USD'};
+  beforeWrite=barrier(2);
+  const result=await Promise.all([call(sync,'POST',payload,quick,null),call(sync,'POST',payload,quick,null)]);
+  beforeWrite=null;
+  assert.ok(result.every(x=>x.statusCode===200));
+  assert.equal(result.filter(x=>x.body.duplicate).length,1);
+  assert.equal((await call(sync,'POST',payload,quick,null)).body.duplicate,true);
+  const saved=(await call(sync,'GET')).body;
+  assert.equal(saved.rev,2); assert.equal(saved.data.storage.balance,-405);
+  assert.equal(saved.data.months[0].weeks[1].expenses.length,1);
+  assert.equal((await call(sync,'POST',payload,token('nina','quick-expense',0),null)).statusCode,401);
+});
+
+test('inbox concurrent stage, replay, filtering, acknowledgement and readback',async()=>{
+  documents.clear(); const ingest='synthetic-ingest';
+  beforeWrite=barrier(2);
+  const batches=await Promise.all(['synthetic-1','synthetic-2'].map(id=>call(inbox,'POST',{items:[row(id)]},ingest,null)));
+  beforeWrite=null;
+  assert.ok(batches.every(x=>x.statusCode===200));
+  let pending=await call(inbox,'GET'); assert.equal(pending.body.items.length,2);
+  const replay=await call(inbox,'POST',{items:[row('synthetic-1')]},ingest,null);
+  assert.equal(replay.body.duplicates,1);
+  const statuses=['Declined','Failed','Pending','unknown'];
+  const filtered=await call(inbox,'POST',{items:statuses.map((bankStatus,i)=>({...row('filtered-'+i),bankStatus}))},ingest,null);
+  assert.equal(filtered.body.accepted,0);
+  assert.equal(filtered.body.skippedDeclined,2); assert.equal(filtered.body.skippedUnsettled,2);
+  assert.equal((await call(inbox,'POST',{items:[{...row('invalid-1'),date:'2026-02-30'}]},ingest,null)).statusCode,400);
+  assert.equal((await call(inbox,'PATCH',{ids:['synthetic-1']})).statusCode,200);
+  assert.equal((await call(inbox,'PATCH',{ids:['synthetic-1']})).statusCode,200);
+  pending=await call(inbox,'GET'); assert.deepEqual(pending.body.items.map(x=>x.id),['synthetic-2']);
+  assert.ok(!documents.has('family-budget.json'),'staging never debits budget');
+});
+
+test('preview paths and historical seeds cannot touch family documents',async()=>{
+  process.env.VERCEL_ENV='preview'; delete process.env.VERCEL_URL;
+  assert.throws(()=>storagePath('family-budget.json'),/preview_storage_not_isolated/);
+  process.env.VERCEL_URL='synthetic-preview.vercel.app';
+  process.env.NINOCHKA_INBOX_INITIAL_BATCH=JSON.stringify([row('private-seed-do-not-copy')]);
   try {
-    const result = await response({ origin, authorization: `Bearer ${access}` }, 'PUT', {
-      rev: null,
-      data: { version: 4, months: [], storage: { balance: 0 } }
-    });
-    assert.equal(result.statusCode, 400);
-    assert.equal(result.body.error, 'invalid_budget');
-  } finally { globalThis.fetch = originalFetch; }
+    assert.equal((await call(inbox,'GET')).body.items.length,0);
+    const result=await call(sync,'PUT',{rev:0,data:budget()}); assert.equal(result.statusCode,200);
+    assert.ok(documents.has('previews/synthetic-preview.vercel.app/family-budget.json'));
+    assert.ok(!documents.has('family-budget.json'));
+  } finally {delete process.env.VERCEL_ENV;delete process.env.VERCEL_URL;delete process.env.NINOCHKA_INBOX_INITIAL_BATCH;}
 });

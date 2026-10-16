@@ -2,9 +2,9 @@
   "name": "ninochka-sync",
   "private": true,
   "type": "module",
-  "scripts": {"test": "node --test"},
-  "engines": {"node": ">=20"},
+  "scripts": {"test": "node --experimental-test-module-mocks --test"},
+  "engines": {"node": "24.x"},
   "dependencies": {
-    "@vercel/blob": "^2.6.1"
+    "@vercel/blob": "2.8.2"
   }
 }

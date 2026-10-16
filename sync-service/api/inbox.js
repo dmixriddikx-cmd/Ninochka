@@ -1,12 +1,11 @@
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { signedActor as actor } from '../lib/token-auth.js';
-import { get, put, del } from '@vercel/blob';
+import { readDocument, replaceDocument, WriteConflict } from '../lib/blob-store.js';
 import { excludeUnsuccessful } from '../lib/transaction-status.js';
 
 // Independent staging queue; never changes the family budget.
 const ORIGIN = 'https://dmixriddikx-cmd.github.io';
 const PATH = 'family-expense-inbox.json';
-const LOCK = 'family-expense-inbox.lock';
 const LIMIT = 200;
 const CURRENCIES = new Set(['EUR', 'USD', 'MDL', 'UAH']);
 const CATEGORIES = new Set(['products', 'transport', 'clothes', 'leisure', 'other', 'household', 'health', 'gifts']);
@@ -38,7 +37,8 @@ function cleanItem(item) {
   return { id, name, date, amount, currency, category, status: 'pending' };
 }
 function seed() {
-  const raw = process.env.NINOCHKA_INBOX_INITIAL_BATCH;
+  // Private historical batches must never be copied into preview/test stores.
+  const raw = process.env.VERCEL_ENV === 'preview' ? null : process.env.NINOCHKA_INBOX_INITIAL_BATCH;
   if (!raw) return [];
   const data = JSON.parse(raw);
   if (!Array.isArray(data) || data.length > LIMIT) throw new Error('invalid_seed');
@@ -47,52 +47,29 @@ function seed() {
   if (new Set(cleaned.map(x => x.id)).size !== cleaned.length) throw new Error('duplicate_seed');
   return cleaned;
 }
-async function readFile(path) {
-  const found = await get(path, { access: 'private', useCache: false });
-  return found ? JSON.parse(await new Response(found.stream).text()) : null;
-}
-async function readInbox() {
-  const data = await readFile(PATH);
+async function readInboxSnapshot() {
+  const snapshot = await readDocument(PATH);
+  const data = snapshot.data;
   if (data) {
-    if (!Number.isInteger(data.rev) || !Array.isArray(data.items)) throw new Error('invalid_inbox');
-    return data;
+    if (!Number.isSafeInteger(data.rev) || data.rev < 1 || !Array.isArray(data.items)) throw new Error('invalid_inbox');
+    return snapshot;
   }
-  return { rev: 0, items: seed() };
+  return { ...snapshot, data: { rev: 0, items: seed() } };
 }
-async function acquire() {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const id = randomUUID();
-    try {
-      await put(LOCK, JSON.stringify({ id, timestamp: Date.now() }), {
-        access: 'private', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: false
-      });
-      return id;
-    } catch {
-      const lock = await readFile(LOCK).catch(() => null);
-      if (lock && Date.now() - Number(lock.timestamp) > 20000) {
-        await del(LOCK).catch(() => {});
-      }
-      await new Promise(ok => setTimeout(ok, 100 + attempt * 25));
-    }
-  }
-  throw new Error('inbox_busy');
-}
+async function readInbox() { return (await readInboxSnapshot()).data; }
 async function mutate(fn) {
-  const lockId = await acquire();
-  try {
-    const current = await readInbox();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const snapshot = await readInboxSnapshot();
+    const current = snapshot.data;
     const result = fn(current);
     if (!result.changed) return { rev: current.rev, ...result };
     const next = { rev: current.rev + 1, items: result.items };
-    await put(PATH, JSON.stringify(next), {
-      access: 'private', contentType: 'application/json', addRandomSuffix: false,
-      allowOverwrite: current.rev > 0
-    });
-    return { rev: next.rev, ...result };
-  } finally {
-    const owned = await readFile(LOCK).catch(() => null);
-    if (owned?.id === lockId) await del(LOCK).catch(() => {});
+    try {
+      await replaceDocument(PATH, snapshot, next);
+      return { rev: next.rev, ...result };
+    } catch (error) { if (!(error instanceof WriteConflict)) throw error; }
   }
+  throw new Error('inbox_busy');
 }
 export default async function handler(req, res) {
   const origin = req.headers.origin;

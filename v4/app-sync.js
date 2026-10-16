@@ -218,18 +218,21 @@ async function resetTestData(skipConfirmation = false) {
 }
 function clearSyncSession(message = '') {
   sync.token = '';
-  sync.rev = null;
+  if (sync.dirty) {
+    localStorage.setItem(`ninochka-unsent-${Date.now()}`, localStorage.getItem(STORE) || '');
+  } else {
+    sync.rev = null;
+    localStorage.removeItem(SYNC_REV);
+  }
   sync.connected = false;
   sync.staged = null;
   sync.paused = false;
   sync.busy = false;
-  sync.dirty = false;
+  // Keep the unsent copy and its base revision for a safe retry after login.
   sync.actor = '';
   sync.error = message;
   localStorage.removeItem(SYNC_TOKEN);
-  localStorage.removeItem(SYNC_REV);
   localStorage.removeItem(SYNC_READY);
-  localStorage.removeItem(SYNC_DIRTY);
 }
 
 async function connectSync(login = '', pin = '', restoring = false) {
@@ -249,7 +252,8 @@ async function connectSync(login = '', pin = '', restoring = false) {
     const remote = await syncRequest('GET');
     sync.actor = remote.actor;
     sync.connected = true;
-    sync.rev = remote.rev;
+    const unsentBase = sync.rev;
+    if (!sync.dirty) sync.rev = remote.rev;
     sync.staged = null;
     sync.paused = false;
     localStorage.setItem(SYNC_READY, '1');
@@ -261,7 +265,10 @@ async function connectSync(login = '', pin = '', restoring = false) {
     }
 
     if (sync.dirty) {
-      queueSync();
+      if (Number(unsentBase || 0) !== Number(remote.rev)) {
+        sync.paused = true;
+        sync.error = 'Конфликт версий';
+      } else queueSync();
     } else if (remote.data) {
       adoptRemote(remote.data);
     } else {
@@ -314,6 +321,7 @@ function activateSync() {
 }
 
 let syncAgain = false;
+let syncLocalVersion = 0;
 async function queueSync() {
   if (!sync.connected || sync.paused || !SYNC_API) return;
   if (sync.busy) {
@@ -363,6 +371,7 @@ async function queueSync() {
 }
 
 save = function () {
+  syncLocalVersion++;
   saveLocalOnly();
   if (sync.connected) {
     sync.dirty = true;
@@ -376,7 +385,10 @@ async function refreshSync() {
   if (sync.dirty) return queueSync();
 
   try {
+    const baseRev = sync.rev;
+    const localVersion = syncLocalVersion;
     const remote = await syncRequest('GET');
+    if (sync.dirty || sync.busy || sync.paused || syncLocalVersion !== localVersion || sync.rev !== baseRev) return;
     sync.error = '';
     if (Number(remote.rev) !== Number(sync.rev)) {
       sync.rev = remote.rev;

@@ -150,6 +150,8 @@ async function applyExpenseInbox() {
   }
   expenseInbox.applying = true;
   sync.busy = true;
+  let writeAttempted = false;
+  let localVersion = syncLocalVersion;
   try {
     const latest = await syncRequest('GET');
     if (Number(latest.rev) !== Number(sync.rev)) {
@@ -159,6 +161,7 @@ async function applyExpenseInbox() {
       throw new Error('Бюджет обновился на другом телефоне. Проверь расходы и нажми ещё раз.');
     }
     for (const currency of new Set(selected.map(x => x.currency))) await ensureRateFor(currency);
+    localVersion = syncLocalVersion;
     const draft = structuredClone(state);
     const affected = new Map();
     let inserted = 0;
@@ -188,7 +191,11 @@ async function applyExpenseInbox() {
       core.closeWeek(draft, entry.week);
     }
     if (inserted) {
+      writeAttempted = true;
       const committed = await syncRequest('PUT', { rev: Number(sync.rev || 0), data: draft });
+      if (syncLocalVersion !== localVersion) {
+        throw new Error('Местные изменения сохранены. Открой «Ещё» и проверь конфликт версий.');
+      }
       if (committed.conflict) {
         // Another family member wrote during the review: discard the draft
         // and reload their newer data instead of pretending our write succeeded.
@@ -204,6 +211,14 @@ async function applyExpenseInbox() {
       localStorage.setItem(SYNC_REV, String(sync.rev));
       adoptRemote(draft);
     }
+    const verified = await syncRequest('GET');
+    if (syncLocalVersion !== localVersion || !verified.data ||
+        !selected.every(item => inboxPreviouslyRecorded(item, verified.data))) {
+      throw new Error('Сервер ещё не подтвердил расходы. Проверь общий бюджет перед повтором.');
+    }
+    sync.rev = Number(verified.rev);
+    localStorage.setItem(SYNC_REV, String(sync.rev));
+    adoptRemote(verified.data);
     try { await inboxRequest('PATCH', { ids: selected.map(x => x.id) }); }
     catch { /* Imported rows are recognized by importId on the next refresh. */ }
     expenseInbox.items = expenseInbox.items.filter(x => !selected.some(s => s.id === x.id));
@@ -211,6 +226,13 @@ async function applyExpenseInbox() {
     render();
     notify('Зачислено расходов: ' + inserted + '. Дубли пропущены.');
   } catch (error) {
+    if (writeAttempted) {
+      // A lost response may hide a committed write. Preserve local data and
+      // require a fresh shared copy before any further whole-budget writes.
+      sync.paused = true;
+      sync.error = 'Не подтверждена общая версия';
+      localStorage.setItem(`ninochka-inbox-recovery-${Date.now()}`, localStorage.getItem(STORE) || '');
+    }
     notify(error.message || 'Не удалось импортировать расходы');
     // Unconfirmed items remain pending; no speculative local expense is saved.
   } finally {

@@ -23,7 +23,9 @@ export function bankRows(raw, imageDigest) {
     throw new Error('invalid_recognition');
   const accepted=[], excluded=[], uncertain=[];
   const seen = new Set();
+  const occurrences = new Map();
   raw.transactions.forEach((t,i) => {
+    if (!t || typeof t !== 'object') { uncertain.push({reason:'missing_details',label:''}); return; }
     const result=bankOutcome({
       // Bank screenshots use 'status' for actual posting state. Unlike inbox
       // queue status, 'Pending' here must be excluded before any staging.
@@ -33,6 +35,11 @@ export function bankRows(raw, imageDigest) {
     });
     if (result === 'declined' || result === 'unsettled') {
       excluded.push({reason:result, label:String(t.name||'').slice(0,80)});
+      return;
+    }
+    const posting = String(t.bankStatus || t.status || '').trim();
+    if (!/^(completed|posted|settled|success(?:ful)?|approved|оплачено|выполнен[ао]?|успешно|провед[её]н[ао]?|завершен[ао]?|сплачено|виконано)$/i.test(posting)) {
+      uncertain.push({reason:'unconfirmed_status',label:String(t.name||'').slice(0,80)});
       return;
     }
     const name=String(t.name||'').trim().slice(0,120);
@@ -50,9 +57,12 @@ export function bankRows(raw, imageDigest) {
     // Bank reference or timestamp is ideal for deduplication. Without either,
     // identify the row inside this screenshot. Never conflate two purchases
     // for identical amounts at one merchant on the same day.
-    const identity = ref || time
-      ? ['bank',bank,ref,time,date,name.toLowerCase(),currency,amount].join('|')
-      : ['screenshot',imageDigest,i,date,name.toLowerCase(),currency,amount].join('|');
+    const timed = [bank,time,date,name.toLowerCase(),currency,amount].join('|');
+    const occurrence = occurrences.get(timed) || 0;
+    occurrences.set(timed, occurrence + 1);
+    const identity = ref ? ['reference',bank,ref].join('|')
+      : time ? ['timed',timed,occurrence].join('|')
+      : ['screenshot',imageDigest,i].join('|');
     const id='scan_'+createHash('sha256').update(identity).digest('hex').slice(0,40);
     if(seen.has(id))return;
     seen.add(id);

@@ -24,6 +24,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install pinned backend dependencies
+        run: npm ci --prefix sync-service --ignore-scripts
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -54,6 +61,8 @@ jobs:
           node tests-transaction-status.mjs
           node tests-recognition.mjs
           node tests-auth.mjs
+          npm test --prefix sync-service
+          node tests-sync-browser.mjs
           node --check sync-service/lib/token-auth.js
           node tests-api-recognition.mjs
           node --test sync-service/quick-entry.test.mjs
