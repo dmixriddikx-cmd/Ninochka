@@ -54,6 +54,7 @@ jobs:
       - name: Budget invariants and UI smoke tests
         run: |
           node tests-inbox.mjs
+          node tests-inbox-dedupe.mjs
           node tests-transaction-status.mjs
           node tests-recognition.mjs
           node tests-auth.mjs
