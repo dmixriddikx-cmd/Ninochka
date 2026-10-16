@@ -14,15 +14,22 @@ function inboxPreviouslyRecorded(item, data = state) {
     ww.expenses.some(row => row.importId === item.id)
   ));
 }
+function inboxSimilarPayment(a, b) {
+  return String(a.name || '').trim().toLowerCase() === String(b.name || '').trim().toLowerCase() &&
+    a.currency === b.currency && Number(a.amount) === Number(b.amount) &&
+    String(a.date || '').slice(0, 10) === String(b.date || '').slice(0, 10);
+}
 function inboxPossibleDuplicate(item, data = state) {
-  // Matching details without an import ID are a warning, not proof.
-  // Leave the decision with the person confirming the expense.
-  return data.months.some(mm => mm.weeks.some(ww => ww.expenses.some(row =>
-    row.importId !== item.id &&
-    String(row.name || '').trim().toLowerCase() === String(item.name || '').trim().toLowerCase() &&
-    row.currency === item.currency && Number(row.amount) === Number(item.amount) &&
-    String(row.date || '').slice(0,10) === item.date
-  )));
+  // Never erase a charge based on matching merchant/amount/date.
+  // Prior budget entries and earlier queued screenshots only trigger a warning.
+  const inBudget = data.months.some(mm => mm.weeks.some(ww =>
+    ww.expenses.some(row => row.importId !== item.id && inboxSimilarPayment(row, item))
+  ));
+  const index = expenseInbox.items.findIndex(row => row.id === item.id);
+  const inQueue = index > 0 && expenseInbox.items.slice(0, index).some(row =>
+    row.id !== item.id && inboxSimilarPayment(row, item)
+  );
+  return inBudget || inQueue;
 }
 function inboxPending() { return expenseInbox.items.filter(item => !inboxPreviouslyRecorded(item)); }
 function inboxBanner() {
