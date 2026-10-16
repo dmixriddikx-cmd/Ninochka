@@ -91,6 +91,34 @@ async function registerFamilyPasskey() {
     render();
   }
 }
+
+async function manageFamilyPasskeys() {
+  if (!sync.connected || sync.busy || !passkeySupported()) return;
+  try {
+    const result=await passkeyRequest('passkey-list',{},true);
+    const items=result.items||[];
+    const rows=items.length?items.map(item=>
+      '<div class="ct-sync-actions" style="margin:8px 0"><span class="ct-profile-note">Ключ '+escape(item.id.slice(0,8))+'…</span> <button class="ct-soft" type="button" data-passkey-remove="'+escape(item.id)+'">Удалить</button></div>'
+    ).join(''):'<p class="note">Пока нет сохранённых ключей доступа.</p>';
+    showModal('Ключи Face ID', '<p class="note">Удаление требует текущего пароля VNN. Другую учётную запись это не затронет.</p>'+
+      rows+'<label class="field"><span>Текущий пароль для удаления ключа</span><input class="ct-sync-input" type="password" autocomplete="current-password" data-passkey-revoke-pin placeholder="Пароль VNN"></label>');
+  }catch(error){notify(error?.message||'Не удалось получить список ключей.');}
+}
+async function revokeFamilyPasskey(id) {
+  if (!sync.connected || sync.busy || !confirm('Удалить этот ключ доступа? Для следующего входа понадобится пароль или другой ключ.'))return;
+  const field=modal.querySelector('[data-passkey-revoke-pin]');
+  const pin=field?.value||'';
+  if(field)field.value='';
+  if(!pin)return notify('Введи пароль VNN для удаления ключа.');
+  sync.busy=true;
+  try{
+    await passkeyRequest('passkey-revoke',{id,pin,login:sync.actor==='nina'?'Нина':'Вова'},true);
+    notify('Ключ удалён из VNN.');
+    await manageFamilyPasskeys();
+  }catch(error){notify(error?.message||'Не удалось удалить ключ.');}
+  finally{sync.busy=false;}
+}
+
 async function loginWithPasskey() {
   if(!passkeySupported() || sync.busy)return;
   sync.busy=true;
@@ -117,10 +145,15 @@ async function loginWithPasskey() {
 document.addEventListener('click', event=>{
   const register=event.target.closest('[data-passkey-register]');
   const login=event.target.closest('[data-auth-passkey]');
-  if(!register&&!login)return;
+  const manage=event.target.closest('[data-passkey-manage]');
+  const remove=event.target.closest('[data-passkey-remove]');
+  if(!register&&!login&&!manage&&!remove)return;
   event.preventDefault();
   event.stopImmediatePropagation();
-  if(register)registerFamilyPasskey(); else loginWithPasskey();
+  if(register)registerFamilyPasskey();
+  else if(login)loginWithPasskey();
+  else if(manage)manageFamilyPasskeys();
+  else if(remove)revokeFamilyPasskey(remove.dataset.passkeyRemove);
 },true);
 
 
@@ -157,7 +190,7 @@ function syncPanel() {
         : sync.busy || sync.dirty
           ? 'Сохраняем изменения…'
           : `Общий бюджет подключён · ${syncActorName()}`;
-    return `<p class="ct-profile-note">${status}</p><div class="ct-sync-actions"><button class="ct-soft" data-sync="refresh">Обновить</button><button class="ct-soft" data-sync="backup">Скачать копию</button><button class="ct-soft" data-sync="logout">Выйти</button>${sync.paused ? '<button class="ct-soft" data-sync="use-remote">Открыть свежую общую версию</button>' : ''}</div>` + (passkeySupported() ? `<section class="ct-card" style="margin-top:16px;padding:16px"><strong>Вход через Face ID</strong><p class="ct-profile-note">Бесплатный ключ доступа Apple. Подтверди свой пароль VNN один раз — он не сохраняется.</p><label class="field"><span>Текущий пароль VNN</span><input class="ct-sync-input" type="password" autocomplete="current-password" data-passkey-pin placeholder="Пароль"></label><button class="ct-soft" type="button" data-passkey-register>Подключить Face ID</button></section>` : '');
+    return `<p class="ct-profile-note">${status}</p><div class="ct-sync-actions"><button class="ct-soft" data-sync="refresh">Обновить</button><button class="ct-soft" data-sync="backup">Скачать копию</button><button class="ct-soft" data-sync="logout">Выйти</button>${sync.paused ? '<button class="ct-soft" data-sync="use-remote">Открыть свежую общую версию</button>' : ''}</div>` + (passkeySupported() ? `<section class="ct-card" style="margin-top:16px;padding:16px"><strong>Вход через Face ID</strong><p class="ct-profile-note">Бесплатный ключ доступа Apple. Подтверди свой пароль VNN один раз — он не сохраняется.</p><label class="field"><span>Текущий пароль VNN</span><input class="ct-sync-input" type="password" autocomplete="current-password" data-passkey-pin placeholder="Пароль"></label><button class="ct-soft" type="button" data-passkey-register>Подключить Face ID</button> <button class="ct-soft" type="button" data-passkey-manage>Мои ключи</button></section>` : '');
   }
 
   return `<p class="ct-profile-note">Нина и Вова видят один бюджет. Войди под своим именем — новые записи автоматически получат автора.</p><label class="field"><span>Логин</span><input class="ct-sync-input" type="text" autocomplete="username" data-sync-login value="${escape(sync.login)}" placeholder="Нина или Вова"></label><label class="field"><span>Пароль</span><input class="ct-sync-input" type="password" autocomplete="current-password" data-sync-pin placeholder="Пароль"></label><button class="ct-primary ct-full" data-sync="connect">Войти</button>${sync.error ? `<p class="ct-sync-error">${escape(sync.error)}</p>` : ''}`;
