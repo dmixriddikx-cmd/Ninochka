@@ -64,6 +64,8 @@ try {
    await page.locator('[data-auth-form]').evaluate(form=>form.requestSubmit());
    await page.locator('.ct-app').waitFor();
    assert.equal(await page.evaluate(()=>__vnnWebAuthnTest.actor),expectedActor);
+   // Complete the first-run onboarding just like a real new user.
+   for(let step=0;step<4;step++)await page.locator('[data-onboard]').click();
    await page.evaluate(()=>__vnnWebAuthnTest.openMore());
    await page.locator('[data-passkey-pin]').fill('synthetic-pin');
    await page.locator('[data-passkey-register]').click();
