@@ -33,6 +33,7 @@ async function request(page,path,method='GET',body){
  return page.evaluate(async({path,method,body})=>{
   const response=await fetch(path,{method,cache:'no-store',headers:{
    Authorization:'Bearer '+localStorage.getItem('ninochka-sync-token'),
+   ...(method==='PUT'?{'X-VNN-Write-Protocol':'2'}:{}),
    ...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
   return {status:response.status,body:await response.json()};
  },{path,method,body});

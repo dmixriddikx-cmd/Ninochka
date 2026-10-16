@@ -12,7 +12,7 @@ const origin = 'https://dmixriddikx-cmd.github.io';
 let checks = 0;
 async function call(path, method='GET', body, token, source=origin) {
   const response = await fetch(base+path, {method, signal:AbortSignal.timeout(25000),
-    headers:{...(source?{Origin:source}:{}),...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},
+    headers:{...(source?{Origin:source}:{}),...(method==='PUT'?{'X-VNN-Write-Protocol':'2'}:{}),...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},
     ...(body?{body:JSON.stringify(body)}:{})});
   return {status:response.status,body:await response.json().catch(()=>({})),headers:response.headers};
 }
@@ -22,7 +22,9 @@ status(await call('/api/sync'),401);
 status(await call('/api/inbox'),401);
 status(await call('/api/recognize','POST',{}),401);
 status(await call('/api/sync','GET',undefined,undefined,'https://evil.example'),403);
-assert.equal((await call('/api/sync','OPTIONS')).headers.get('access-control-allow-origin'),origin);checks++;
+const preflight=await call('/api/sync','OPTIONS');
+assert.equal(preflight.headers.get('access-control-allow-origin'),origin);
+assert.ok(preflight.headers.get('access-control-allow-headers').toLowerCase().includes('x-vnn-write-protocol'));checks+=2;
 status(await call('/api/sync','POST',{action:'login',login:'Нина',pin:'synthetic-wrong-pin'}),401);
 const nina=await session('Нина'), vova=await session('Вова');
 const before=status(await call('/api/sync','GET',undefined,nina),200);
@@ -39,6 +41,8 @@ const budgetBytes=Buffer.byteLength(JSON.stringify(data));
 assert.ok(budgetBytes>65536 && budgetBytes<1024*1024);checks++;
 core.setRate(data,'USD','EUR',0.9);core.setRate(data,'MDL','EUR',0.05);core.setRate(data,'UAH','EUR',0.02);
 status(await call('/api/sync','PUT',{rev:0,data},nina),200);
+const legacy=await fetch(base+'/api/sync',{method:'PUT',signal:AbortSignal.timeout(25000),headers:{Origin:origin,Authorization:'Bearer '+nina,'Content-Type':'application/json'},body:JSON.stringify({rev:1,data})});
+assert.equal(legacy.status,426);assert.equal((await legacy.json()).error,'client_upgrade_required');checks+=2;
 const concurrent=await Promise.all([nina,vova].map((token,i)=>call('/api/sync','PUT',{rev:1,data:{...data,storage:{...data.storage,balance:i+1}}},token)));
 assert.deepEqual(concurrent.map(x=>x.status).sort(),[200,409]);checks++;
 let saved=status(await call('/api/sync','GET',undefined,nina),200);

@@ -75,6 +75,7 @@ globalThis.NinochkaSync = {
 
 async function syncRequest(method, body, authenticated = true) {
   const headers = body ? { 'Content-Type': 'application/json' } : {};
+  if (method === 'PUT') headers['X-VNN-Write-Protocol'] = '2';
   if (authenticated && sync.token) headers.Authorization = `Bearer ${sync.token}`;
 
   const response = await fetch(`${SYNC_API}/api/sync`, {
@@ -88,6 +89,8 @@ async function syncRequest(method, body, authenticated = true) {
   if (!response.ok) {
     const message = response.status === 401
       ? (authenticated ? 'Сессия закончилась. Войди снова.' : 'Неверный логин или пароль.')
+      : response.status === 426
+        ? 'Обнови VNN перед отправкой изменений. Местная копия сохранена.'
       : response.status === 503
         ? 'Общий бюджет занят или временно недоступен. Изменения остаются на этом устройстве.'
         : 'Не удалось связаться с общим бюджетом.';

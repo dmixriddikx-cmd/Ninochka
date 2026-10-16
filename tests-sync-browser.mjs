@@ -82,3 +82,15 @@ console.log('Browser synchronization regression PASS: reconnect conflicts, in-fl
   assert.equal(context.state.storage.balance,7500,'Repeated calendar ticks never settle a month twice');
 }
 console.log('Live calendar rollover regression PASS: four weeks, one settlement and queued cloud save');
+
+{
+  const s={sync:{token:'synthetic'},SYNC_API:'https://synthetic.example',fetch:async(_url,options)=>{
+    assert.equal(options.headers['X-VNN-Write-Protocol'],'2');
+    return {status:200,ok:true,json:async()=>({rev:2})};
+  }};
+  vm.createContext(s);vm.runInContext(functionSource('async function syncRequest(', 'function adoptRemote('),s);
+  await s.syncRequest('PUT',{rev:1,data:{synthetic:true}});
+  s.fetch=async()=>({status:426,ok:false,json:async()=>({error:'client_upgrade_required'})});
+  await assert.rejects(s.syncRequest('PUT',{rev:1,data:{synthetic:true}}),error=>error.status===426&&error.message.includes('Местная копия сохранена'));
+}
+console.log('Writer protocol browser regression PASS: current header sent, upgrade rejection preserves local copy');

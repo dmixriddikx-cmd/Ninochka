@@ -145,3 +145,37 @@ available for a production persistence/duplicate audit or a verified financial
 backup. Batch state remains unknown and no batch was applied. Actual OCR needs
 separate spending authorization and secure provider configuration. These and the
 production writer barrier/financial rollback gate remain mandatory before release.
+
+
+## Production-gate continuation
+
+Work continues from verified preview source `f54b38b`, without design changes.
+Real family access is still unavailable: current environment status reports an
+empty Secrets list, `VNN_FAMILY_SESSION_TOKEN` is absent, and managed Cloud Browser
+activation returns `NODE_REPL_AUTH_TOKEN must be provisioned before browser activation`.
+The Opera connector is also disconnected. No real budget backup or restore was
+claimed or attempted without authentication; no production writes occurred.
+
+Implemented the available release-gate engineering: current whole-budget writes
+carry protocol 2; authenticated legacy writers are rejected with 426 before any
+Blob read/archive/write. This does not protect old backend deployment URLs, so
+the provider-level old-host barrier and draining remain mandatory. No live
+firewall or production setting was changed; firewall config lookup returned 404.
+
+A read-only production capture tool is now ready: encrypted files are restricted
+to a private directory outside Git; exact offline decrypt/restore and tamper
+rejection are tested with synthetic data. Its receipt cannot claim a writer
+barrier or production restore. It fails before HTTP if the family Secret is absent.
+
+OCR stays disabled. Official GPT-4o mini pricing was checked at
+https://developers.openai.com/api/docs/models/gpt-4o-mini : USD 0.15 / million input
+tokens and USD 0.60 / million output tokens. Image accounting uses 2,833 base
+plus 5,667 tokens per high-detail tile, per the official images guide. Typical
+4–8-tile screenshot input and a bounded response is roughly USD 0.004–0.012
+per screenshot (four screenshots roughly USD 0.016–0.048); actual usage varies.
+No API billing was activated and no paid recognition request was made.
+
+Next dependency: provision a valid existing family-session bearer token through
+this cloud environment's protected `VNN_FAMILY_SESSION_TOKEN` Secret. No PIN/key
+should be posted in chat or GitHub. This unlocks private capture, not automatic
+financial imports or an unverified production release.

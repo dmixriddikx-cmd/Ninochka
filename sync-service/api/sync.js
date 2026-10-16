@@ -150,7 +150,7 @@ export default async function handler(req, res) {
   if (ORIGIN) {
     res.setHeader('Access-Control-Allow-Origin', ORIGIN);
     res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-VNN-Write-Protocol');
     res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, OPTIONS');
   }
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -197,6 +197,11 @@ export default async function handler(req, res) {
         ...(process.env.VERCEL_ENV === 'preview' ? { storageNamespace: storagePath('') } : {}) });
     }
 
+    // Legacy clients can rebase unsent snapshots incorrectly after reconnect.
+    // Require the current write protocol before any whole-budget replacement.
+    if (req.headers['x-vnn-write-protocol'] !== '2') {
+      return send(res, 426, { error: 'client_upgrade_required', requiredWriteProtocol: 2 });
+    }
     const { rev, data } = req.body || {};
     const serialized = JSON.stringify(data);
     if (!Number.isSafeInteger(rev) || rev < 0 || !validBudget(data) || Buffer.byteLength(serialized) > MAX_BYTES) {

@@ -136,3 +136,44 @@ Same-origin preview browser GET requests normally have no Origin header. The
 preview origin guard accepts that case only with the exact deployment Host,
 matching Referer and `Sec-Fetch-Site: same-origin`; all session checks remain in
 force. Production keeps the approved GitHub Pages Origin policy.
+
+
+## Production capture and writer cutover
+
+`scripts/backup-production.mjs` makes GET requests only to the fixed production
+origin. Supply `VNN_FAMILY_SESSION_TOKEN` via the cloud environment's protected
+Secrets, never CLI arguments or chat. It fails before any request if missing.
+The tool captures a stable budget revision and available inbox state, encrypts
+with AES-256-GCM, and decrypts/readbacks the files byte-for-byte. Default output
+is `/workspace/shared/vnn-private-backups` (0700, files 0600), outside any Git
+checkout; symlink escapes into repositories are rejected. Preserve both encrypted
+file and private key. No real financial values or credentials are logged.
+
+```sh
+NODE_USE_ENV_PROXY=1 node scripts/backup-production.mjs
+```
+
+This verifies private capture and **offline** restoration only. It explicitly
+reports `writerBarrierVerified: false` and `productionRestoreVerified: false`.
+A private backup is not permission to restore over newer family data.
+
+The current frontend sends `X-VNN-Write-Protocol: 2` on whole-budget PUTs.
+The new backend returns 426 before touching Blob when an authenticated legacy
+client omits that protocol, even if it supplies the current revision. Reads and
+restricted Shortcut requests retain their existing authentication requirements.
+This avoids old browser reconnect behavior rebasing unsent data onto a fresh
+revision. Old tabs must reload the approved Pages build before sending edits.
+
+**The client protocol guard does not fence old immutable backend deployments.**
+Before production cutover, establish a provider-level barrier for their write
+routes, drain in-flight old functions using their verified maximum execution
+bound, capture a stable final private snapshot, and prove old deployment write
+requests are blocked. Keep that old-host barrier after aliases move to the new
+backend. Test revision-guarded restore while writes remain blocked. A firewall
+config read returning 404 is not evidence of an active barrier. Do not pause the
+live application or install untested firewall rules just to produce a backup.
+
+Current environment evidence: no bound family-session Secret; managed Cloud
+Browser activation fails because `NODE_REPL_AUTH_TOKEN` is not provisioned.
+No browser runtime credentials were invented and no signing secret was extracted
+to manufacture a family session. The missing authorized session is the next gate.

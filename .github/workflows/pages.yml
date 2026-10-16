@@ -66,6 +66,7 @@ jobs:
           node tests-auth.mjs
           npm test --prefix sync-service
           node tests-sync-browser.mjs
+          node tests-production-backup.mjs
           node --check sync-service/lib/token-auth.js
           node --experimental-test-module-mocks tests-api-recognition.mjs
           node --test sync-service/quick-entry.test.mjs

@@ -35,11 +35,11 @@ const token = (actor='nina', purpose='session', expiresAt=Date.now()+3600000) =>
   const payload = Buffer.from(JSON.stringify({actor,purpose,expiresAt})).toString('base64url');
   return payload+'.'+createHmac('sha256',process.env.NINOCHKA_SESSION_SECRET).update(payload).digest('base64url');
 };
-async function call(handler, method, body, auth=token(), source=origin) {
+async function call(handler, method, body, auth=token(), source=origin, protocol='2') {
   const result = { statusCode:200, headers:{} };
   const res = { status(n){result.statusCode=n;return this;},setHeader(k,v){result.headers[k]=v;return this;},
     json(value){result.body=value;return this;},end(){return this;} };
-  await handler({ method, body, headers:{...(source?{origin:source}:{}),authorization:'Bearer '+auth} },res);
+  await handler({ method, body, headers:{...(source?{origin:source}:{}),authorization:'Bearer '+auth,...(protocol?{'x-vnn-write-protocol':protocol}:{})} },res);
   return result;
 }
 function budget() { return {schemaVersion:4,months:[{id:'2026-10',weeks:[1,2,3,4].map(id=>({id,status:'closed',fund:{amount:0,currency:'EUR',rate:1},expenses:[],settlement:0}))}],storage:{balance:0,currency:'EUR',history:[]},rates:{USD_EUR:{value:0.9}}}; }
@@ -68,6 +68,7 @@ test('auth, CORS, login, token separation and invalid payloads', async()=>{
   const options=await call(sync,'OPTIONS');
   assert.equal(options.statusCode,204);
   assert.equal(options.headers['Access-Control-Allow-Origin'],origin);
+  assert.ok(options.headers['Access-Control-Allow-Headers'].includes('X-VNN-Write-Protocol'));
 });
 
 test('concurrent first creates and updates have one winner and preserve revision',async()=>{
@@ -195,4 +196,17 @@ test('exact-preview browser GET without Origin is accepted only with matching fe
     assert.equal(browserOrigin({...req,headers:{host:req.headers.host}}),null);
     process.env.VERCEL_ENV='production';assert.equal(browserOrigin(req),null);
   } finally {delete process.env.VERCEL_ENV;delete process.env.VERCEL_URL;}
+});
+
+test('legacy snapshot writers cannot replace a newer budget, even with a current revision',async()=>{
+  documents.clear();
+  await call(sync,'PUT',{rev:0,data:budget()});
+  const before=structuredClone([...documents.entries()]);
+  for(const protocol of [null,'1']){
+    const response=await call(sync,'PUT',{rev:1,data:{...budget(),storage:{...budget().storage,balance:999}}},token(),origin,protocol);
+    assert.equal(response.statusCode,426);assert.equal(response.body.error,'client_upgrade_required');
+    assert.deepEqual([...documents.entries()],before,'Rejected legacy write must not archive or replace data');
+  }
+  assert.equal((await call(sync,'GET')).body.rev,1);
+  assert.equal((await call(sync,'PUT',{rev:1,data:budget()})).statusCode,200);
 });
