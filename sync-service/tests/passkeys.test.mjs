@@ -131,6 +131,26 @@ test('real P-256 registration then signed Face ID-style assertion creates correc
   assert.equal((await api('login-finish',{challenge:second.body.publicKey.challenge,credential:wrongId})).statusCode,401);
 });
 
+test('registered passkeys are private to each user and can be revoked only after password confirmation',async()=>{
+  data.clear();
+  const options=await api('register-options',{login:'Нина',pin:'synthetic-pin'},session('nina'));
+  const pair=credentialPair(options.body.publicKey.challenge);
+  const add=await api('register-finish',{challenge:options.body.publicKey.challenge,credential:pair.credential},session('nina'));
+  assert.equal(add.statusCode,200);
+  const ninaList=await api('passkey-list',{},session('nina'));
+  const vovaList=await api('passkey-list',{},session('volodymyr'));
+  assert.equal(ninaList.body.items.length,1);
+  assert.equal(vovaList.body.items.length,0);
+  const id=ninaList.body.items[0].id;
+  assert.equal((await api('passkey-revoke',{id,login:'Нина',pin:'wrong'},session('nina'))).statusCode,401);
+  assert.equal((await api('passkey-revoke',{id,login:'Нина',pin:'synthetic-pin'},session('volodymyr'))).statusCode,401);
+  assert.equal((await api('passkey-revoke',{id,login:'Нина',pin:'synthetic-pin'},session('nina'))).statusCode,200);
+  assert.equal((await api('passkey-list',{},session('nina'))).body.items.length,0);
+  const login=await api('login-options');
+  assert.equal((await api('login-finish',{challenge:login.body.publicKey.challenge,
+    credential:assertion(pair,login.body.publicKey.challenge,'nina')})).statusCode,401);
+});
+
 test('bad signatures, wrong user handles and unverifiable authenticator flags are rejected',async()=>{
   data.clear();
   const opts=await api('register-options',{login:'Вова',pin:'synthetic-pin'},session('volodymyr'));
