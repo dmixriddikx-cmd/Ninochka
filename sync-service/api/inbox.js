@@ -1,4 +1,5 @@
-import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { signedActor as actor } from '../lib/token-auth.js';
 import { get, put, del } from '@vercel/blob';
 import { excludeUnsuccessful } from '../lib/transaction-status.js';
 
@@ -17,19 +18,6 @@ function equal(a, b) {
   const x = Buffer.from(String(a || ''));
   const y = Buffer.from(String(b || ''));
   return x.length === y.length && x.length > 0 && timingSafeEqual(x, y);
-}
-function actor(req) {
-  const match = /^Bearer\s+([A-Za-z0-9._-]+)$/.exec(req.headers.authorization || '');
-  if (!match || !process.env.NINOCHKA_SESSION_SECRET) return null;
-  const pieces = match[1].split('.');
-  if (pieces.length !== 2) return null;
-  const expected = createHmac('sha256', process.env.NINOCHKA_SESSION_SECRET).update(pieces[0]).digest('base64url');
-  if (!equal(expected, pieces[1])) return null;
-  try {
-    const claim = JSON.parse(Buffer.from(pieces[0], 'base64url').toString('utf8'));
-    if (!['nina','volodymyr'].includes(claim.actor) || claim.expiresAt <= Date.now()) return null;
-    return claim.actor;
-  } catch { return null; }
 }
 function cleanItem(item) {
   if (!item || typeof item !== 'object') throw new Error('invalid_item');
