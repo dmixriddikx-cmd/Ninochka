@@ -9,8 +9,8 @@ function session(){
   const sig=createHmac('sha256',process.env.NINOCHKA_SESSION_SECRET).update(body).digest('base64url');
   return body+'.'+sig;
 }
-function request(image,token=session(),origin='https://dmixriddikx-cmd.github.io'){
-  return {method:'POST',headers:{origin,authorization:'Bearer '+token},body:{image}};
+function request(image,token=session(),origin='https://dmixriddikx-cmd.github.io',captureDate=null){
+  return {method:'POST',headers:{origin,authorization:'Bearer '+token},body:{image,captureDate}};
 }
 function fakeResponse(){
   return {statusCode:200,headers:{},status(n){this.statusCode=n;return this;},
@@ -39,6 +39,9 @@ globalThis.fetch=async(_url,options)=>{
   const body=JSON.parse(options.body);
   assert.equal(body.store,false);
   assert.ok(body.messages[1].content.some(x=>x.type==='image_url'));
+  const instructions=body.messages[1].content.find(x=>x.type==='text')?.text||'';
+  assert.ok(instructions.includes('2026-10-15') && instructions.includes('Yesterday'),
+    'relative bank dates must be anchored to image file metadata and reviewed');
   assert.equal(options.headers.Authorization,'Bearer test-key');
   return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({
     transactions:[
@@ -53,7 +56,7 @@ globalThis.fetch=async(_url,options)=>{
 };
 try{
   res=fakeResponse();
-  await recognize(request(image),res);
+  await recognize(request(image,session(),'https://dmixriddikx-cmd.github.io','2026-10-15'),res);
   assert.equal(res.statusCode,200);
   assert.equal(res.data.items.length,1);
   assert.equal(res.data.items[0].amount,450);
