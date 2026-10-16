@@ -44,7 +44,7 @@ globalThis.fetch=async(_url,options)=>{
     transactions:[
       {name:'Coffee',amount:'4.50',currency:'EUR',date:'2026-10-15',
         bank:'Demo Bank',status:'Completed',category:'products'},
-      {name:'Uber',amount:'60.55',currency:'USD',date:'2026-10-15',
+      {name:'Demo Taxi',amount:'9.90',currency:'USD',date:'2026-10-15',
         bank:'Demo Bank',status:'Отклонено банком',category:'transport'},
       {name:'Unknown',amount:null,currency:'USD',date:'2026-10-15',
         bank:'Demo Bank',status:'Completed'}
