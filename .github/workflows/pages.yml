@@ -50,6 +50,7 @@ jobs:
           node tests-inbox.mjs
           node tests-inbox-dedupe.mjs
           node tests-inbox-validation.mjs
+          node tests-importer.mjs
           node tests-transaction-status.mjs
           node tests-recognition.mjs
           node tests-auth.mjs
