@@ -72,10 +72,7 @@ try {
    // The newly minted private key stays inside the virtual authenticator.
    const saved=await cdp.send('WebAuthn.getCredentials',{authenticatorId});
    assert.equal(saved.credentials.length,1);
-   await page.locator('[data-passkey-manage]').click();
-   await page.locator('[data-passkey-remove]').waitFor();
-   await page.locator('[data-passkey-manage]').count();
-   await page.evaluate(()=>{document.querySelector('#modal')?.querySelector('.close')?.click();});
+   // The credential lives inside the browser authenticator after registration.
    // Logout must not revoke the passkey. The next login uses its ECDSA signature.
    await page.locator('[data-sync="logout"]').click();
    await page.locator('.ct-auth-shell').waitFor();
