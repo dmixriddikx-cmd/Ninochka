@@ -52,7 +52,7 @@ function signSession(actor) {
   return { token: `${payload}.${signature}`, expiresAt };
 }
 
-function actorFromSession(req) {
+export function actorFromSession(req) {
   const match = /^Bearer\s+([A-Za-z0-9._-]+)$/.exec(req.headers.authorization || '');
   if (!match) return null;
   const [payload, signature] = match[1].split('.');
