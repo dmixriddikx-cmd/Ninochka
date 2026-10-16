@@ -33,13 +33,14 @@ jobs:
           sed "s/__BUILD_ID__/${BUILD_ID}/g" index.html > _site/index.html
           cp contract.css core.js corefix.js sync-config.js _site/
           cp -r assets/* _site/assets/
-          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js > _site/app.js
+          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js v4/app-inbox.js > _site/app.js
           touch _site/.nojekyll
 
           node --check _site/app.js
           node --check _site/core.js
           node --check _site/corefix.js
           node tests-v4.mjs
+          node tests-inbox.mjs
           node tests-ui-contract.mjs _site
           node tests-ui-runtime.mjs _site
 
