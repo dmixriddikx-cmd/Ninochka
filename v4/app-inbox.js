@@ -179,13 +179,18 @@ document.addEventListener('click', event => {
   if (control.dataset.inbox === 'apply') applyExpenseInbox();
 }, true);
 
-setInterval(() => {
+// Browser timers must not hold open the Node.js runtime smoke-test process.
+function inboxPoll(fn, ms) {
+  const timer = setInterval(fn, ms);
+  if (typeof timer === 'object' && typeof timer.unref === 'function') timer.unref();
+}
+inboxPoll(() => {
   if (!document.hidden && sync.connected) refreshExpenseInbox();
 }, 30000);
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && sync.connected) refreshExpenseInbox();
 });
-setInterval(() => {
+inboxPoll(() => {
   if (sync.connected && !expenseInbox.ready) refreshExpenseInbox();
 }, 2500);
 if (sync.connected) refreshExpenseInbox();
