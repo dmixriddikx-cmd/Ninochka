@@ -30,7 +30,8 @@ await replaceDocument('generation-2/family-budget.json',{etag:null},{rev:1,data,
 const {default:sync}=await import('../../sync-service/api/sync.js');
 const {default:inbox}=await import('../../sync-service/api/inbox.js');
 const {default:recognize}=await import('../../sync-service/api/recognize.js');
-const handlers={'/api/sync':sync,'/api/inbox':inbox,'/api/recognize':recognize};
+const {default:passkeys}=await import('../../sync-service/api/passkeys.js');
+const handlers={'/api/sync':sync,'/api/inbox':inbox,'/api/recognize':recognize,'/api/passkeys':passkeys};
 const server=createServer(async(req,res)=>{
   const handler=handlers[req.url];
   if(!handler){res.writeHead(404).end();return;}
