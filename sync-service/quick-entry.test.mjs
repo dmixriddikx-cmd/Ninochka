@@ -70,12 +70,18 @@ test('currency conversion respects saved rate and refuses unknown rate',()=>{
 
 test('first expense in a new month creates only a zero-allocation month',()=>{
   const state=fresh();
+  state.months[0].obligations = [{id:'school-old',name:'school',kind:'study',
+    amount:15000,currency:'EUR',rate:1}];
   const result=applyQuickExpense(state,'nina',expense('first-new-month','2026-11-01','2'));
   assert.equal(result.monthId,'2026-11');
   assert.equal(state.months.length,2);
   const month=state.months.find(x=>x.id==='2026-11');
   assert.equal(month.weeks.length,4);
   assert.ok(month.weeks.every(w=>w.fund.amount===0));
+  assert.equal(month.obligations.length,1);
+  assert.equal(month.obligations[0].name,'school');
+  assert.equal(month.obligations[0].amount,15000);
+  assert.notEqual(month.obligations[0].id,'school-old');
   assert.equal(month.weeks[0].expenses[0].amount,200);
 });
 
