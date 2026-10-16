@@ -48,6 +48,7 @@ jobs:
           node --check _site/corefix.js
           node tests-v4.mjs
           node tests-inbox.mjs
+          node tests-inbox-dedupe.mjs
           node tests-transaction-status.mjs
           node tests-recognition.mjs
           node tests-auth.mjs
