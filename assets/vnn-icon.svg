@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="VNN">
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#17141f"/>
+      <stop offset=".58" stop-color="#21192a"/>
+      <stop offset="1" stop-color="#111119"/>
+    </linearGradient>
+    <radialGradient id="glow"><stop offset="0" stop-color="#765078" stop-opacity=".24"/><stop offset="1" stop-color="#765078" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="208" fill="url(#base)"/>
+  <circle cx="725" cy="260" r="580" fill="url(#glow)"/>
+  <rect x="22" y="22" width="980" height="980" rx="190" fill="none" stroke="#6a586e" stroke-opacity=".54" stroke-width="3"/>
+  <text x="512" y="558" text-anchor="middle" font-family="Inter,DejaVu Sans,Arial,sans-serif" font-size="296" font-weight="700" letter-spacing="-9" fill="#f6eef6">VNN</text>
+  <circle cx="470" cy="706" r="12" fill="#b5a9c2"/>
+  <circle cx="512" cy="706" r="12" fill="#dca6ce"/>
+  <circle cx="554" cy="706" r="12" fill="#b98cce"/>
+</svg>
