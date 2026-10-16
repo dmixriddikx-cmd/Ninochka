@@ -151,6 +151,17 @@ async function applyExpenseInbox() {
     }
     if (inserted) {
       const committed = await syncRequest('PUT', { rev: Number(sync.rev || 0), data: draft });
+      if (committed.conflict) {
+        // Another family member wrote during the review: discard the draft
+        // and reload their newer data instead of pretending our write succeeded.
+        const newer = await syncRequest('GET');
+        sync.rev = Number(newer.rev);
+        localStorage.setItem(SYNC_REV, String(sync.rev));
+        if (newer.data) adoptRemote(newer.data);
+        throw new Error('Бюджет обновился на другом телефоне. Проверь список ещё раз.');
+      }
+      if (!Number.isFinite(Number(committed.rev)))
+        throw new Error('Сервер не подтвердил сохранение. Повтори проверку.');
       sync.rev = Number(committed.rev);
       localStorage.setItem(SYNC_REV, String(sync.rev));
       adoptRemote(draft);
