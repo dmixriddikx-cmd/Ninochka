@@ -31,6 +31,7 @@ jobs:
           node --check sync-service/api/inbox.js
           node --check sync-service/api/sync.js
           node --check sync-service/lib/quick-entry.js
+          node --check sync-service/lib/transaction-status.js
           node --check v4/app-quick.js
           node --check v4/app-inbox.js
           cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js v4/app-inbox.js v4/app-quick.js > app.js
@@ -38,6 +39,7 @@ jobs:
       - name: Budget invariants and UI smoke tests
         run: |
           node tests-inbox.mjs
+          node tests-transaction-status.mjs
           node --test sync-service/quick-entry.test.mjs
           node tests-v4.mjs
           mkdir -p _site
