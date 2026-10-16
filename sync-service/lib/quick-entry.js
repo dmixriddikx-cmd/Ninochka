@@ -45,7 +45,15 @@ export function applyQuickExpense(data, actor, payload) {
     const weeks = [1, 2, 3, 4].map(id => ({ id, status: 'open',
       fund: { amount: 0, currency: targetCurrency, rate: 1 },
       expenses: [], settlement: 0, closedAt: null }));
-    month = { id: monthId, status: 'active', obligations: [], weeks,
+    // Keep the approved monthly household/school template, but do not
+    // manufacture a weekly allocation just because a Shortcut was used first.
+    const previous = [...data.months].filter(x=>x.id < monthId)
+      .sort((x,y)=>y.id.localeCompare(x.id))[0];
+    const obligations = (previous?.obligations || []).map((item,index)=>({
+      ...item, id: 'quick-month-' + monthId + '-' + index,
+      rate: item.currency === targetCurrency ? 1 : null
+    }));
+    month = { id: monthId, status: 'active', obligations, weeks,
       createdAt: new Date().toISOString() };
     data.months.push(month);
   }
