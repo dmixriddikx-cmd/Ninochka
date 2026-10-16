@@ -44,13 +44,14 @@ jobs:
           node tests-inbox.mjs
           node tests-inbox-dedupe.mjs
           node tests-inbox-validation.mjs
+          node tests-inbox-race.mjs
           node tests-importer.mjs
           node tests-transaction-status.mjs
           node tests-recognition.mjs
           node tests-auth.mjs
           npm test --prefix sync-service
           node tests-sync-browser.mjs
-          node tests-api-recognition.mjs
+          node --experimental-test-module-mocks tests-api-recognition.mjs
           node --test sync-service/quick-entry.test.mjs
           node tests-v4.mjs
           mkdir -p _site

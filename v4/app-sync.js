@@ -102,10 +102,33 @@ function adoptRemote(data) {
   const preferences = { ...state.preferences };
   state = core.migrate(data);
   state.preferences = { ...state.preferences, ...preferences, actor: sync.actor };
+  const calendarChanged = needsCalendarRollover(state);
   core.ensureCurrentMonth(state);
-  saveLocalOnly();
+  if (calendarChanged) save(); else saveLocalOnly();
   view.week = firstOpenWeekId();
   render();
+}
+
+function needsCalendarRollover(data) {
+  const current = core.nowMonth();
+  return !data.months.some(month => month.id === current) ||
+    data.months.some(month => month.id < current && month.status !== 'closed');
+}
+
+function advanceLocalCalendar() {
+  if (!sync.connected || sync.busy || sync.paused || !needsCalendarRollover(state)) return false;
+  try {
+    const draft = structuredClone(state);
+    core.ensureCurrentMonth(draft);
+    state = draft;
+    save();
+    render();
+    return true;
+  } catch {
+    sync.error = 'Для завершения месяца проверь курсы валют.';
+    render();
+    return true;
+  }
 }
 
 function backupLocal(content = localStorage.getItem(STORE)) {
@@ -401,6 +424,7 @@ save = function () {
 
 async function refreshSync() {
   if (!sync.connected || sync.busy || sync.paused) return;
+  if (advanceLocalCalendar()) return;
   if (sync.dirty) return queueSync();
 
   try {
@@ -496,6 +520,7 @@ render = function () {
   setDoc();
   if (!sync.connected) {
     modal.open && modal.close();
+    document.querySelector('.onboarding')?.remove();
     app.innerHTML = authRestorePending ? authRestoreScreen() : authScreen();
     return;
   }

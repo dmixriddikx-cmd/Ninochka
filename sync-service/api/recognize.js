@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { signedActor as actor } from '../lib/token-auth.js';
 import { bankRows, validDate } from '../lib/recognition.js';
 import { browserOrigin } from '../lib/browser-origin.js';
+import { readDocument, replaceDocument, WriteConflict } from '../lib/blob-store.js';
 
 const MAX_IMAGE_BYTES=1900000;
 function send(res,status,body){return res.status(status).setHeader('Cache-Control','no-store').json(body);}
@@ -55,6 +56,12 @@ export default async function handler(req,res){
   try{img=unpackImage(req.body?.image);}catch(e){
     return send(res,400,{error:e.message==='image_too_large'?'image_too_large':'invalid_image'});
   }
+  const cachePath = 'recognition/' + img.digest + '.json';
+  let cached;
+  try {
+    cached = await readDocument(cachePath);
+    if (cached.data) return send(res,200,cached.data);
+  } catch { return send(res,503,{error:'recognition_storage_unavailable'}); }
   // The phone's file modification date is a HINT, not authenticated bank metadata.
   // It is used only when the bank screenshot itself shows a relative day label.
   // The resulting date is always shown for user review before budget changes.
@@ -94,13 +101,24 @@ export default async function handler(req,res){
       return send(res,503,{error:'recognition_incomplete'});
     const parsed=JSON.parse(output);
     const normalized=bankRows(parsed,img.digest);
-    return send(res,200,{
+    const result = {
       items:normalized.items,
       excludedCount:normalized.excluded.length,
       uncertainCount:normalized.uncertain.length,
       // No banking details beyond the minimum needed for review.
       needsReview:normalized.uncertain.length>0
-    });
+    };
+    // Re-reading the same screenshot must keep the exact original row IDs and
+    // details even if a provider would reorder/omit rows on a second request.
+    // Store only the review result, never the screenshot or provider response.
+    try { await replaceDocument(cachePath,cached,result); }
+    catch(error) {
+      if (!(error instanceof WriteConflict)) throw error;
+      const winner=await readDocument(cachePath);
+      if (!winner.data) throw new Error('recognition_cache_conflict');
+      return send(res,200,winner.data);
+    }
+    return send(res,200,result);
   }catch(e){
     return send(res,503,{error:'recognition_unavailable'});
   }finally{clearTimeout(timer);}

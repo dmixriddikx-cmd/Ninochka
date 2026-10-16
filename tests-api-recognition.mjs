@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
-import recognize from './sync-service/api/recognize.js';
+import { mock } from 'node:test';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
+const cache=new Map();
+class BlobPreconditionFailedError extends Error {}
+mock.module(pathToFileURL(createRequire(new URL('./sync-service/package.json',import.meta.url)).resolve('@vercel/blob').replace(/index\.cjs$/, 'index.js')).href,{exports:{
+ BlobPreconditionFailedError,
+ get:async path=>{const row=cache.get(path);return row?{stream:new Response(row.body).body,blob:{etag:row.etag}}:null;},
+ put:async(path,body,options)=>{if(cache.has(path)&&options.allowOverwrite===false)throw new BlobPreconditionFailedError();cache.set(path,{body,etag:'synthetic-etag'});}
+}});
+const {default:recognize}=await import('./sync-service/api/recognize.js');
 const old={secret:process.env.NINOCHKA_SESSION_SECRET,
   enabled:process.env.VNN_SCAN_ENABLED,key:process.env.OPENAI_API_KEY};
 process.env.NINOCHKA_SESSION_SECRET='test-session-secret';
@@ -64,6 +74,11 @@ try{
   assert.equal(res.data.uncertainCount,1);
   assert.equal(res.data.needsReview,true);
   assert.equal(calls,1);
+  const firstResult=structuredClone(res.data);
+  res=fakeResponse();
+  await recognize(request(image,session(),'https://dmixriddikx-cmd.github.io','2026-10-15'),res);
+  assert.deepEqual(res.data,firstResult,'Repeat screenshot reuses the privately stored review result');
+  assert.equal(calls,1,'Repeat screenshot does not invoke the provider again');
   res=fakeResponse();
   await recognize(request('not-an-image'),res);
   assert.equal(res.statusCode,400);

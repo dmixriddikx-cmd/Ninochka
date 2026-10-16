@@ -9,7 +9,8 @@ let beforeWrite = null;
 class BlobPreconditionFailedError extends Error {}
 mock.module('@vercel/blob', { exports: {
   BlobPreconditionFailedError,
-  get: async path => {
+  get: async (path, options) => {
+    assert.equal(options.headers?.['accept-encoding'],'identity','CAS reads must retain the stored representation ETag');
     const found = documents.get(path);
     return found ? { stream: new Response(found.body).body, blob: { etag: found.etag } } : null;
   },

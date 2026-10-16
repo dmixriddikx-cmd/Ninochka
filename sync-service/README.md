@@ -41,8 +41,8 @@ coordinate writer cutover and client reload before any approved release.
 Every Vercel Preview automatically stores documents and history under
 `previews/<VERCEL_URL>/`. Missing deployment identity fails closed. Production
 paths stay unchanged. Preview tests must use synthetic records exclusively;
-private batch seeding is disabled there. Preview credentials should be separate
-from production credentials when provisioned by the owner.
+private batch seeding is disabled there. Preview credentials are required to be separate
+from production credentials.
 
 Inbox staging never debits the budget. The family reviews dates and confirms in
 VNN. The client verifies saved import IDs through budget readback before queue
@@ -77,3 +77,47 @@ Blob model. It never contacts production or a paid recognition service. Browser
 test hooks are appended only to intercepted module responses; they are never
 included in the shipped application. Real iPhone installation, real OCR, and
 live Blob concurrency still require separate authorized verification.
+
+## Preview credential isolation and live checks
+
+Previews deliberately refuse production credentials and sessions. Configure the
+following **preview-only Secret** keys with synthetic test values:
+
+- `NINOCHKA_PREVIEW_SESSION_SECRET`
+- `NINOCHKA_PREVIEW_NINA_CREDENTIAL_SHA256`
+- `NINOCHKA_PREVIEW_VOLODYMYR_CREDENTIAL_SHA256`
+- `NINOCHKA_PREVIEW_INBOX_INGEST_TOKEN` only if external staging is tested.
+
+These keys do not change either family's production login. A live verification
+runner must first receive `environment: preview` and the exact immutable hostname
+in `storageNamespace`; it refuses a populated namespace before any write.
+Run `scripts/verify-live-preview.mjs` with `VNN_PREVIEW_URL` and a privately
+provisioned `VNN_PREVIEW_LOGIN_PIN`. Never put that PIN or session tokens in CI
+output, command arguments, source or issue comments. This runner contacts the
+actual deployed API and Blob, uses synthetic records, and never invokes paid OCR.
+
+Blob GET must request `accept-encoding: identity`: the observed Brotli GET
+representation ETag differs from `head()` and cannot guard stored-object writes.
+Both budget and inbox use this shared read path. The live acceptance must include
+large JSON, concurrent updates, conflict retries and readback; a small probe or
+in-memory mock misses the compression defect.
+
+Recognized review results are cached privately by exact image digest. The image
+itself and raw provider output are not retained. Re-upload uses identical row IDs
+without another provider request; concurrent recognitions use the winning cached
+result. Inbox acknowledgment refuses IDs absent from the saved budget. Imported
+IDs remain compact replay tombstones and do not consume pending queue capacity.
+
+The existing frontend can also be copied into `sync-service/public/` for an
+isolated QA deployment, with only `sync-config.js` pointing to `location.origin`.
+This is a build of the same frontend, not a replacement project or production
+cutover. Only its own exact immutable preview Origin is permitted in addition to
+the approved GitHub Pages Origin. Never promote that QA build as production.
+
+The PWA caches only public shell files; financial API calls never enter Service
+Worker Cache Storage. Existing authenticated, unexpired local sessions can reopen
+the local recovery copy offline. Server authentication remains mandatory on every
+cloud request. A new service worker waits for existing tabs to close. The browser
+suite includes real offline restarts, persistence and authenticated online
+readback against a synthetic local service. This does not establish physical
+iPhone installation or Apple Shortcuts behavior.

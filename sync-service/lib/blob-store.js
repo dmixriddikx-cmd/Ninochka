@@ -12,7 +12,10 @@ export function storagePath(path) {
 }
 
 export async function readDocument(path) {
-  const result = await get(storagePath(path), { access: 'private', useCache: false });
+  // Compression can give GET a representation ETag that differs from Blob's
+  // stored-object ETag. Conditional writes must use the identity representation.
+  const result = await get(storagePath(path), { access: 'private', useCache: false,
+    headers: { 'accept-encoding': 'identity' } });
   if (!result) return { data: null, etag: null };
   const etag = result.blob.etag;
   if (!etag) throw new Error('blob_etag_missing');

@@ -36,6 +36,7 @@ try{
     const page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
     await page.goto('https://dmixriddikx-cmd.github.io/Ninochka/');
     assert.equal(await page.locator('.ct-auth-shell').count(),1);
+    assert.equal(await page.locator('.onboarding').count(),0,'Onboarding cannot block the login form');
     await page.locator('[data-sync-login]').fill(login);
     await page.locator('[data-sync-pin]').fill('synthetic-pin');
     await page.locator('[data-auth-form]').evaluate(form=>form.requestSubmit());
@@ -54,14 +55,16 @@ try{
   await nina.locator('[data-inbox="review"]').click();
   const date=await nina.locator('[data-inbox-date]').inputValue();
   await nina.locator('[data-inbox-date]').fill(date.slice(0,8)+'07');
+  await nina.locator('[data-inbox-name]').fill('Corrected synthetic coffee');
+  await nina.locator('[data-inbox-amount]').fill('5.75');
   await nina.locator('[data-inbox="apply"]').click();
   await nina.waitForFunction(()=>!__vnnTest.expenseInbox.applying&&!__vnnTest.modal.open);
-  const summary=await nina.evaluate(()=>({rev:__vnnTest.sync.rev,paused:__vnnTest.sync.paused,balance:__vnnTest.state.storage.balance,rows:__vnnTest.state.months.flatMap(m=>m.weeks.flatMap(w=>w.expenses.filter(e=>e.importId==='synthetic-browser-1').map(e=>({week:w.id,date:e.date}))))}));
+  const summary=await nina.evaluate(()=>({rev:__vnnTest.sync.rev,paused:__vnnTest.sync.paused,balance:__vnnTest.state.storage.balance,rows:__vnnTest.state.months.flatMap(m=>m.weeks.flatMap(w=>w.expenses.filter(e=>e.importId==='synthetic-browser-1').map(e=>({week:w.id,date:e.date,name:e.name,amount:e.amount}))))}));
   assert.equal(summary.paused,false);assert.equal(summary.rows.length,1);assert.equal(summary.rows[0].week,1);
-  assert.equal(summary.rows[0].date.slice(8,10),'07');assert.equal(summary.balance,-450);
+  assert.equal(summary.rows[0].date.slice(8,10),'07');assert.equal(summary.rows[0].name,'Corrected synthetic coffee');assert.equal(summary.rows[0].amount,575);assert.equal(summary.balance,-575);
   const vova=await device('Вова');
   const second=await vova.evaluate(()=>({balance:__vnnTest.state.storage.balance,rev:__vnnTest.sync.rev}));
-  assert.deepEqual(second,{balance:-450,rev:summary.rev});
+  assert.deepEqual(second,{balance:-575,rev:summary.rev});
   const replay=await nina.evaluate(()=>__vnnTest.inboxRequest('POST',{action:'stage-recognized',items:[{id:'synthetic-browser-1',name:'Synthetic Coffee',date:new Date().toISOString().slice(0,7)+'-14',amount:450,currency:'EUR',category:'products'}]}));
   assert.equal(replay.duplicates,1);
   const pending=await nina.evaluate(()=>__vnnTest.inboxRequest('GET'));assert.equal(pending.items.length,0);
