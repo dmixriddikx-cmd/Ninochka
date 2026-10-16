@@ -1,26 +1,10 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash } from 'node:crypto';
+import { signedActor as actor } from '../lib/token-auth.js';
 import { bankRows } from '../lib/recognition.js';
 
 const ORIGIN='https://dmixriddikx-cmd.github.io';
 const MAX_IMAGE_BYTES=1900000;
 function send(res,status,body){return res.status(status).setHeader('Cache-Control','no-store').json(body);}
-function actor(req) {
-  const match=/^Bearer\s+([A-Za-z0-9._-]+)$/.exec(req.headers.authorization||'');
-  const secret=process.env.NINOCHKA_SESSION_SECRET;
-  if(!match||!secret)return null;
-  const parts=match[1].split('.');
-  if(parts.length!==2)return null;
-  const expected=createHmac('sha256',secret).update(parts[0]).digest('base64url');
-  const a=Buffer.from(parts[1]),b=Buffer.from(expected);
-  if(a.length!==b.length || !timingSafeEqual(a,b))return null;
-  try{
-    const claim=JSON.parse(Buffer.from(parts[0],'base64url').toString('utf8'));
-    if(!['nina','volodymyr'].includes(claim.actor) ||
-      claim.purpose || !Number.isFinite(claim.expiresAt) ||
-      claim.expiresAt<=Date.now())return null;
-    return claim.actor;
-  }catch{return null;}
-}
 function unpackImage(image){
   if(typeof image!=='string')throw Error('invalid_image');
   const match=/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(image);
