@@ -23,6 +23,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Static JavaScript verification
         run: |
           node --check sync-service/api/inbox.js
@@ -36,5 +39,11 @@ jobs:
           mkdir -p _site
           cp index.html contract.css core.js corefix.js sync-config.js app.js _site/
           cp -r assets _site/
+          cp manifest.webmanifest _site/
+          python -m pip install --disable-pip-version-check --quiet 'CairoSVG==2.8.2'
+          python scripts/build-vnn-icons.py _site
+          test -s _site/assets/vnn-icon-180.png
+          test -s _site/assets/vnn-icon-192.png
+          test -s _site/assets/vnn-icon-512.png
           node tests-ui-contract.mjs _site
           node tests-ui-runtime.mjs _site
