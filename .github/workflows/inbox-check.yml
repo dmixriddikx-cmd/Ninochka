@@ -44,6 +44,7 @@ jobs:
           node tests-inbox.mjs
           node tests-transaction-status.mjs
           node tests-recognition.mjs
+          node tests-api-recognition.mjs
           node --test sync-service/quick-entry.test.mjs
           node tests-v4.mjs
           mkdir -p _site
