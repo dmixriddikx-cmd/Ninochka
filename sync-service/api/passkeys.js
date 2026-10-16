@@ -127,6 +127,25 @@ export default async function handler(req,res) {
       });
       return send(res,200,{registered:true,actor});
     }
+    if(action==='passkey-list'){
+      const actor=signedActor(req,'session');
+      if(!actor)return send(res,401,{error:'invalid_session'});
+      const owned=(await credentials()).filter(x=>x.actor===actor);
+      return send(res,200,{items:owned.map(x=>({id:x.id,createdAt:x.createdAt})),actor});
+    }
+    if(action==='passkey-revoke'){
+      const actor=signedActor(req,'session');
+      if(!actor||passwordActor(body.login,body.pin)!==actor)
+        return send(res,401,{error:'recent_password_confirmation_required'});
+      if(typeof body.id!=='string'||!/^[A-Za-z0-9_-]{20,350}$/.test(body.id))
+        return send(res,400,{error:'invalid_credential'});
+      await mutate(KEY_PATH,verifiedDatabase,current=>{
+        if(!current.items.some(x=>x.id===body.id&&x.actor===actor))
+          throw new PasskeyError('unknown_passkey',404);
+        return current.items.filter(x=>!(x.id===body.id&&x.actor===actor));
+      });
+      return send(res,200,{revoked:true,actor});
+    }
     if(action==='login-options'){
       const challenge=makeChallenge({kind:'get',actor:'*',origin,secret:sessionSecret()});
       return send(res,200,{publicKey:{challenge,rpId,timeout:60000,userVerification:'required'}});
