@@ -24,6 +24,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Build and verify V4
         shell: bash
         run: |
@@ -33,6 +37,9 @@ jobs:
           sed "s/__BUILD_ID__/${BUILD_ID}/g" index.html > _site/index.html
           cp contract.css core.js corefix.js sync-config.js _site/
           cp -r assets/* _site/assets/
+          cp manifest.webmanifest _site/
+          python -m pip install --disable-pip-version-check --quiet 'CairoSVG==2.8.2'
+          python scripts/build-vnn-icons.py _site
           cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js v4/app-inbox.js > _site/app.js
           touch _site/.nojekyll
 
@@ -45,6 +52,12 @@ jobs:
           node tests-ui-runtime.mjs _site
 
           test -s _site/index.html
+          test -s _site/manifest.webmanifest
+          test -s _site/assets/vnn-icon-180.png
+          test -s _site/assets/vnn-icon-192.png
+          test -s _site/assets/vnn-icon-512.png
+          grep -q 'rel="apple-touch-icon"' _site/index.html
+          grep -q 'rel="manifest"' _site/index.html
           test -s _site/contract.css
           test -s _site/app.js
           test -s _site/assets/storage-approved.b64
