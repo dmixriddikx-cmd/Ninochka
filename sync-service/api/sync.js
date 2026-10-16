@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { del, get, put } from '@vercel/blob';
 import { applyQuickExpense, QuickError } from '../lib/quick-entry.js';
+import { signedActor } from '../lib/token-auth.js';
 
 const ORIGIN = 'https://dmixriddikx-cmd.github.io';
 const DATA_PATH = 'family-budget.json';
@@ -54,27 +55,7 @@ function signSession(actor) {
   return { token: `${payload}.${signature}`, expiresAt };
 }
 
-function actorFromSession(req) {
-  const match = /^Bearer\s+([A-Za-z0-9._-]+)$/.exec(req.headers.authorization || '');
-  if (!match) return null;
-  const [payload, signature] = match[1].split('.');
-  if (!payload || !signature) return null;
-  const secret = process.env.NINOCHKA_SESSION_SECRET;
-  if (!secret) return null;
-  const expected = createHmac('sha256', secret).update(payload).digest('base64url');
-  const actualBuf = Buffer.from(signature);
-  const expectedBuf = Buffer.from(expected);
-  if (actualBuf.length !== expectedBuf.length || !timingSafeEqual(actualBuf, expectedBuf)) return null;
-  try {
-    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    if (!['nina', 'volodymyr'].includes(parsed.actor) ||
-        (parsed.purpose && parsed.purpose !== 'session') ||
-        Number(parsed.expiresAt) <= Date.now()) return null;
-    return parsed.actor;
-  } catch {
-    return null;
-  }
-}
+const actorFromSession = req => signedActor(req, 'session');
 
 // Shortcuts get an individually issued, restricted token: it cannot read the family
 // budget, change settings, or authenticate as a normal VNN web session.
@@ -88,24 +69,7 @@ function issueQuickToken(actor) {
   return { token: payload + '.' + signature, expiresAt };
 }
 
-function actorFromQuickToken(req) {
-  const match = /^Bearer\\s+([A-Za-z0-9._-]+)$/.exec(req.headers.authorization || '');
-  const secret = process.env.NINOCHKA_SESSION_SECRET;
-  if (!match || !secret) return null;
-  const parts = match[1].split('.');
-  if (parts.length !== 2) return null;
-  const expected = createHmac('sha256', secret).update(parts[0]).digest('base64url');
-  const givenBytes = Buffer.from(parts[1]);
-  const expectedBytes = Buffer.from(expected);
-  if (givenBytes.length !== expectedBytes.length ||
-      !timingSafeEqual(givenBytes, expectedBytes)) return null;
-  try {
-    const claim = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
-    if (claim.purpose !== 'quick-expense' || !['nina', 'volodymyr'].includes(claim.actor) ||
-        !Number.isFinite(claim.expiresAt) || claim.expiresAt <= Date.now()) return null;
-    return claim.actor;
-  } catch { return null; }
-}
+const actorFromQuickToken = req => signedActor(req, 'quick-expense');
 
 async function streamText(stream) {
   return new Response(stream).text();
