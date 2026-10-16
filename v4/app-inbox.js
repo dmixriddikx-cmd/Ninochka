@@ -97,14 +97,16 @@ function reviewExpenseInbox() {
       (possibleDuplicate ? '<small style="display:block">⚠ Возможный дубль — проверь перед добавлением</small>' : '') +
       '</span><strong>' + escape(price) + '</strong></label>';
   }).join('');
-  const currencies = [...new Set(list.map(x => x.currency))].map(currency => {
-    const sum = list.filter(x => x.currency === currency).reduce((a,x) => a+x.amount,0);
+  const initiallySelected = list.filter(item => !inboxPossibleDuplicate(item));
+  const currencies = [...new Set(initiallySelected.map(x => x.currency))].map(currency => {
+    const sum = initiallySelected.filter(x => x.currency === currency)
+      .reduce((a,x) => a+x.amount,0);
     return fmt(sum,currency);
-  }).join(' + ');
+  }).join(' + ') || '—';
   showModal('Проверка расходов', '<p class="note">Подтвердить можно одним нажатием. ' +
-    'Расходы попадут в недели по дате, дубли будут пропущены. Прошедшая неделя закроется и её итог изменит Хранилище, даже ниже нуля.</p>' +
+    'Расходы попадут в недели по дате. Точные повторы будут пропущены, похожие операции нужно проверить. Прошедшая неделя закроется и её итог изменит Хранилище, даже ниже нуля.</p>' +
     '<div style="max-height:48vh;overflow:auto">' + rows + '</div>' +
-    '<p><strong>Всего: ' + escape(currencies) + '</strong></p>' +
+    '<p><strong>Выбрано: <span data-inbox-total>' + escape(currencies) + '</span></strong></p>' +
     '<div class="modal-actions"><button type="button" class="btn primary" data-inbox="apply">Подтвердить и распределить</button></div>');
 }
 function inboxMonth(data, id) {
@@ -201,6 +203,18 @@ async function applyExpenseInbox() {
     refreshExpenseInbox();
   }
 }
+document.addEventListener('change', event => {
+  if (!event.target.closest?.('[data-inbox-check]')) return;
+  const checked = [...modal.querySelectorAll('[data-inbox-check]:checked')]
+    .map(node => node.dataset.inboxCheck);
+  const chosen = inboxPending().filter(item => checked.includes(item.id));
+  const total = [...new Set(chosen.map(x => x.currency))].map(currency =>
+    fmt(chosen.filter(x => x.currency === currency)
+      .reduce((sum,x) => sum + x.amount, 0),currency)
+  ).join(' + ') || '—';
+  const label = modal.querySelector('[data-inbox-total]');
+  if (label) label.textContent = total;
+}, true);
 document.addEventListener('click', event => {
   const control = event.target.closest('[data-inbox]');
   if (!control) return;
