@@ -13,6 +13,11 @@ on:
       - "sync-service/api/sync.js"
       - "sync-service/api/recognize.js"
       - "tests-auth.mjs"
+      - "sync-service/lib/token-auth.js"
+      - "sync-service/lib/recognition.js"
+      - "sync-service/api/sync.js"
+      - "sync-service/api/recognize.js"
+      - "tests-auth.mjs"
       - "tests-inbox.mjs"
       - ".github/workflows/pages.yml"
       - ".github/workflows/inbox-check.yml"
@@ -41,6 +46,7 @@ jobs:
           node --check sync-service/lib/quick-entry.js
           node --check sync-service/lib/transaction-status.js
           node --check sync-service/lib/token-auth.js
+          node --check sync-service/lib/token-auth.js
           node --check v4/app-quick.js
           node --check v4/app-inbox.js
           cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js v4/app-inbox.js v4/app-quick.js v4/app-scan.js > app.js
@@ -50,6 +56,7 @@ jobs:
           node tests-inbox.mjs
           node tests-transaction-status.mjs
           node tests-recognition.mjs
+          node tests-auth.mjs
           node tests-auth.mjs
           node tests-api-recognition.mjs
           node --test sync-service/quick-entry.test.mjs
