@@ -2,6 +2,15 @@ import { get, put, BlobPreconditionFailedError } from '@vercel/blob';
 
 export class WriteConflict extends Error {}
 
+export function retryableStorageError(error) {
+  return error instanceof WriteConflict ||
+    String(error?.constructor?.name || '').startsWith('Blob') ||
+    ['TypeError', 'AbortError', 'TimeoutError'].includes(error?.name);
+}
+export async function storageRetry(attempt) {
+  await new Promise(resolve => setTimeout(resolve, Math.min(800, 100 * 2 ** attempt)));
+}
+
 export function storagePath(path) {
   if (process.env.VERCEL_ENV !== 'preview') return path;
   // Each immutable preview has its own synthetic store, even if Vercel inherited

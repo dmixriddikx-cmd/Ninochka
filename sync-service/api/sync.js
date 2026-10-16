@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { put } from '@vercel/blob';
-import { readDocument, replaceDocument, storagePath, WriteConflict } from '../lib/blob-store.js';
+import { readDocument, replaceDocument, storagePath, WriteConflict, retryableStorageError, storageRetry } from '../lib/blob-store.js';
 import { applyQuickExpense, QuickError } from '../lib/quick-entry.js';
 import { signedActor, sessionSecret } from '../lib/token-auth.js';
 import { browserOrigin } from '../lib/browser-origin.js';
@@ -120,6 +120,7 @@ async function writeBudget(actor, expectedRev, data) {
 async function writeQuickBudget(actor, payload) {
   // Recompute against the winning revision; never retry an unconditional overwrite.
   for (let attempt = 0; attempt < 5; attempt++) {
+    try {
     const snapshot = await readBudgetSnapshot();
     const current = snapshot.data;
     if (!current.data) throw new QuickError('budget_not_initialized', 409);
@@ -127,11 +128,13 @@ async function writeQuickBudget(actor, payload) {
     const result = applyQuickExpense(draft, actor, payload);
     if (result.duplicate) return { duplicate: true, rev: current.rev };
     if (Buffer.byteLength(JSON.stringify(draft)) > MAX_BYTES) throw new QuickError('budget_too_large', 409);
-    try {
       const next = await commitBudget(snapshot, actor, draft);
       return { duplicate: false, rev: next.rev, monthId: result.monthId,
         weekId: result.weekId, currency: result.row.currency, amountMinor: result.row.amount };
-    } catch (error) { if (!(error instanceof WriteConflict)) throw error; }
+    } catch (error) {
+      if (!retryableStorageError(error)) throw error;
+      if (attempt < 4) await storageRetry(attempt);
+    }
   }
   return { busy: true };
 }

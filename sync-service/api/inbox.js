@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { signedActor as actor } from '../lib/token-auth.js';
-import { readDocument, replaceDocument, WriteConflict } from '../lib/blob-store.js';
+import { readDocument, replaceDocument, retryableStorageError, storageRetry } from '../lib/blob-store.js';
 import { excludeUnsuccessful } from '../lib/transaction-status.js';
 import { browserOrigin } from '../lib/browser-origin.js';
 
@@ -59,15 +59,18 @@ async function readInboxSnapshot() {
 async function readInbox() { return (await readInboxSnapshot()).data; }
 async function mutate(fn) {
   for (let attempt = 0; attempt < 5; attempt++) {
+    try {
     const snapshot = await readInboxSnapshot();
     const current = snapshot.data;
     const result = fn(current);
     if (!result.changed) return { rev: current.rev, ...result };
     const next = { rev: current.rev + 1, items: result.items };
-    try {
       await replaceDocument(PATH, snapshot, next);
       return { rev: next.rev, ...result };
-    } catch (error) { if (!(error instanceof WriteConflict)) throw error; }
+    } catch (error) {
+      if (!retryableStorageError(error)) throw error;
+      if (attempt < 4) await storageRetry(attempt);
+    }
   }
   throw new Error('inbox_busy');
 }

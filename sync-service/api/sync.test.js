@@ -6,6 +6,7 @@ import { createHmac, createHash } from 'node:crypto';
 const documents = new Map();
 let serial = 0;
 let beforeWrite = null;
+let afterWrite = null;
 class BlobPreconditionFailedError extends Error {}
 mock.module('@vercel/blob', { exports: {
   BlobPreconditionFailedError,
@@ -21,6 +22,7 @@ mock.module('@vercel/blob', { exports: {
         (options.allowOverwrite === false && current)) throw new BlobPreconditionFailedError();
     assert.ok(options.ifMatch || options.allowOverwrite === false || path.includes('history/'), 'no unconditional document overwrites');
     documents.set(path, { body, etag: 'etag-' + (++serial) });
+    if (afterWrite && !path.includes('history/')) await afterWrite(path);
   }
 }});
 const { default: sync } = await import('./sync.js');
@@ -161,4 +163,20 @@ test('signed manual corrections round trip without rejecting the existing budget
   assert.equal((await call(sync,'GET')).body.data.months[0].weeks[0].expenses[0].amount,-500);
   data.months[0].weeks[0].fund.amount=-1;
   assert.equal((await call(sync,'PUT',{rev:1,data})).statusCode,400,'fund allocations remain nonnegative');
+});
+
+test('ambiguous storage success retries read the winning IDs instead of debiting again',async()=>{
+  documents.clear();await call(sync,'PUT',{rev:0,data:budget()});
+  class BlobNetworkError extends Error {}
+  afterWrite=async()=>{afterWrite=null;throw new BlobNetworkError('Synthetic lost write response');};
+  const payload={action:'quick-add',id:'synthetic-lost-response',date:'2026-10-14',amount:'4.50',currency:'USD'};
+  const quick=await call(sync,'POST',payload,token('nina','quick-expense'),null);
+  assert.equal(quick.statusCode,200);assert.equal(quick.body.duplicate,true);
+  const saved=(await call(sync,'GET')).body;
+  assert.equal(saved.rev,2);assert.equal(saved.data.storage.balance,-405);
+  assert.equal(saved.data.months[0].weeks[1].expenses.length,1);
+  afterWrite=async()=>{afterWrite=null;throw new BlobNetworkError('Synthetic lost stage response');};
+  const staged=await call(inbox,'POST',{action:'stage-recognized',items:[row('synthetic-lost-stage')]});
+  assert.equal(staged.statusCode,200);assert.equal(staged.body.duplicates,1);
+  assert.equal((await call(inbox,'GET')).body.items.length,1);
 });

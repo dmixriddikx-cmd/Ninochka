@@ -1,108 +1,100 @@
-# Issue #3 verification checkpoint — 2026-10-16
+# VNN integration and release gate — 2026-10-16
 
-Implementation remains on `feature/charlie-expense-inbox-20261015`, in draft
-PR [#2](https://github.com/dmixriddikx-cmd/Ninochka/pull/2). No merge, Pages deploy,
-production deployment, credential rotation, private batch staging, or family
-budget write was performed. Final immutable branch SHA and CI links are recorded
-in the PR after the implementation commit is pushed.
+Continue the existing feature branch and PR #2. The current immutable source,
+latest CI, final preview deployment and runtime outcomes are recorded in the PR
+body; older SHAs in issue comments are historical checkpoints, not current HEAD.
+No family budget write, historical batch application, PIN change, paid OCR request,
+production merge or production promotion has been authorized by these test runs.
+The owner's current instruction authorizes a controlled release once gates pass.
 
-## Engineering evidence
+## Inventory and preserved state
 
-- Replaced budget and inbox lease locks with private Blob ETag conditional writes.
-  First creation forbids overwrite. Stale writers cannot publish over a winner.
-  Quick Add and inbox mutations recompute after conditional-write conflicts.
-- Pinned `@vercel/blob` 2.8.2 and committed npm lockfiles. Its API supports
-  `get().blob.etag` and `put(..., {ifMatch})`. This SDK contract still needs a
-  real isolated-preview provider check; local tests do not establish distributed
-  provider behavior.
-- Vercel preview data/history paths are isolated by immutable deployment hostname;
-  missing hostname fails closed. Preview never reads the private initial seed.
-- Offline reconnect retains the unsent base revision; a newer remote revision
-  pauses for review. Expired sessions preserve dirty data and a recovery copy.
-  Refresh does not replace edits made during an in-flight request.
-- Inbox confirmation performs authenticated saved-budget readback before
-  acknowledgement. Ambiguous writes pause further writes and retain local data.
-- Failed, pending and unknown bank statuses are held out. Recognition requires a
-  recognized successful posting status. Incomplete rows stay out. Bank references
-  remain stable despite optional OCR fields changing; minute-only timestamps do
-  not erase identical repeated purchases.
-- Budget validation enforces four distinct weekly IDs, safe integer money and
-  supported currencies, while allowing negative storage.
-- No CSS, approved image/icon, index markup or manifest changes.
+| Area | Current finding |
+| --- | --- |
+| Approved frontend | GitHub Pages production uses main `bf491c38c79605dfb5960277d389a62a1eeb4e9b`; newer source remains in PR #2 |
+| Approved design | `contract.css`, index markup, manifest and approved assets unchanged by these repairs |
+| Budget engine | Four weekly funds, closure/reopening, retroactive corrections, signed manual corrections, negative Storage and EUR/USD/MDL/UAH regression checks pass |
+| Backend production | Preserved `dpl_EfDdXXQv58EeDqBXVDVqrzAJmbWq`, existing aliases unchanged; approved-Origin `/api/sync` returns 401 unauthenticated, new inbox/recognition routes are absent there (404) |
+| Initial READY preview | `dpl_8xQrbymEzutqQkhRw5MHBze8s48h` had no working `/api/sync` route; READY was not functionality evidence |
+| Correct deployment root | Fresh deployment with `sync-service/` root serves all three API routes; project root setting repaired |
+| Git integration | Vercel explicitly reports no connected Git repository; this explains the gitSource failure. Exact-source inline deployments work; Git integration itself is not repaired |
+| Storage | Existing private Blob store `store_1Uk84eHDVHO7zjyn` preserved; synthetic data under immutable `previews/<hostname>/` only |
+| Historical batch | Initial-batch env key exists; persistence/application status is UNKNOWN until authenticated production inspection. No private screenshot attachments supplied to this run |
+| OCR | Disabled: `OPENAI_API_KEY` and `VNN_SCAN_ENABLED` absent. Mock-provider tests are not real OCR |
+| Legacy artifacts | Additional CSS, unused source fragments and payload files are not part of the active UI bundle; retained rather than deleted or rewritten |
+| Observability | Connector build/runtime log operations still return 403 for scope `jwmhnfndnc-3728`; direct terminal HTTP checks work. No CLI credentials; cloud dashboard requires sign-in |
 
-## Verified local checks
+## Repairs
 
-Runtime: Node **24.19.0**. Backend suite: **13/13 pass**. Root regression scripts,
-syntax checks, budget/UAH invariants, generated icons, frozen UI contract and
-runtime smoke pass. Browser recovery tests cover offline revision mismatch,
-in-flight refresh edits, and expired-session dirty-state preservation.
+- Real provider defect reproduced: Brotli GET returned a different ETag from
+  Blob `head()` on a large budget. Conditional writes using that representation
+  failed. `accept-encoding: identity` produces the stored-object ETag and is now
+  required by the shared budget/inbox/cache reader. No unconditional-write fallback.
+- Quick Add and inbox retry transient storage failures and recompute after a
+  conflict, including a response lost after successful commit. Bounded backoff;
+  permanent validation failures do not retry. Sync function has a 30-second limit.
+- Preview credentials/session signing are separate from production. Inherited
+  production sessions and ingestion tokens cannot authenticate to preview.
+- Closed-week settlements rebase with Storage currency, preserving correction,
+  savings and reopening math. Signed manual expense corrections survive API
+  validation; weekly fund allocations remain nonnegative.
+- Review supports merchant, amount, currency and date corrections. Local edits
+  during importer preflight cannot be replaced or silently sent with a changed
+  remote revision. Stable import IDs are checked through cloud readback.
+- Inbox cannot acknowledge unconfirmed transactions. Acknowledged IDs remain
+  compact replay tombstones; imported entries do not exhaust pending capacity.
+- Recognition caches the minimal private review result by exact image digest.
+  Re-upload reuses the same rows without another provider call; racing results
+  use the winning cached record. No screenshot or raw provider response is stored.
+- Login is no longer covered by the introductory overlay.
+- Service Worker caches only the public application shell. An existing unexpired
+  authenticated installation reopens its local recovery copy offline. Offline
+  expenses survive restarts and synchronize after reconnection; API responses
+  never enter shell caches. New installations still require cloud login.
+- Calendar rollover runs while an authenticated app stays open, queues a cloud
+  save, creates exactly four weeks and never settles the same month twice.
+- Shortcut setup explains reusing the same UUID on retries and checking `saved`.
 
-Mobile Chromium at **390 × 844** passes this synthetic flow:
+## Verification boundaries
 
-`family login → stage → review → edit purchase date → confirm → week 1 → negative storage → authenticated readback → second session → identical replay`
+Node 24 suite includes auth/CORS, conditional first-create/update, stale writers,
+concurrent inbox and Quick Add, lost write responses, token separation, negative
+FX balances, review races and financial/calendar invariants. See current CI.
 
-Replay is a no-op, both sessions agree on revision/balance, the pending queue is
-empty, and there are no page exceptions or horizontal overflow. Manifest is
-standalone with 192/512 icons. See `tools/browser/smoke.mjs` and the updated CI.
-The harness intercepts external URLs and runs the actual handlers with an
-in-memory Blob model. It uses synthetic login/data only and disables paid OCR.
-This is **not** a cloud preview, real OCR, physical iPhone installation or a
-native widget test. Browser hooks exist only in intercepted test responses.
+Mobile Chromium tests run the actual frontend and handlers against an in-memory
+Blob model with synthetic login/data, including editable review, two accounts,
+replay, 390px layout and manifest. A separate browser test installs the actual
+Service Worker from a local HTTP server and tests two offline restarts, an offline
+expense, authenticated online readback exactly once, and absence of API caches.
+These tests are explicitly synthetic. They do not establish real OCR, actual
+Apple Shortcuts execution or physical iPhone installation.
 
-## Live read-only evidence
+`scripts/verify-live-preview.mjs` is a separate, guarded real-cloud runner. It
+requires a NEW immutable preview and proves its storage namespace before writing.
+It exercises auth, two accounts, actual Blob read/write/conflict behavior, inbox
+staging/acknowledgment, status filtering, corrected dates, duplicate imports,
+restricted Quick Add, simultaneous requests and synthetic data rollback. Its
+actual result is recorded in PR #2, including any unresolved failure. No green CI
+or READY state may substitute for this result.
 
-- GitHub Pages: HTTP **200**, [live URL](https://dmixriddikx-cmd.github.io/Ninochka/).
-- Pages deployment `6874940949`: success, commit
-  `bf491c38c79605dfb5960277d389a62a1eeb4e9b`,
-  [deployment run](https://github.com/dmixriddikx-cmd/Ninochka/actions/runs/37409102038).
-- Existing production backend: `/api/sync` HTTP **401** without a session and
-  `/api/inbox` HTTP **404**, with the approved Origin. No authenticated family
-  data was read or written. These responses do not prove full production health.
-- Vercel project metadata: **403 forbidden** for
-  `prj_Azq2dYlvYhlGflm8mCFszoQ7pEoV` in
-  `team_nNO5GNBWGs5ouopkW9AgS3GA` (scope `jwmhnfndnc-3728`).
-  Safe error: `Not authorized: Trying to access resource under scope`.
-- CLI fallback found no Vercel credentials. Its automatically offered device
-  login was cancelled; no alternate scope or interactive authentication was used.
+## Production gate and recovery
 
-## Acceptance ledger
+1. Authenticate privately to the existing family budget. Preserve an authenticated
+   readback, exact revision, byte/hash-verified recoverable backup and private
+   inbox state before cutover. Do not retrieve or print environment credential values.
+2. Establish a verified writer barrier for old deployments. Old unconditional
+   writers must not run against new ETag writers or a restored snapshot. Existing
+   production deployments are retained; merely preserving an ID is not a tested
+   financial rollback.
+3. Recheck current production credential/storage metadata and compatible frontend
+   and backend artifacts. Keep preview test credentials out of production.
+4. Stage the production build, verify against its production configuration, and
+   test the concrete rollback under the writer barrier before assigning aliases.
+5. Publish the existing GitHub Pages pipeline and backend deliberately, then
+   verify the real production URLs, both family sessions, queue and saved budget.
+6. Real OCR requires separate owner spending approval and secure server-side API
+   credentials. Physical dual-iPhone installation/Shortcut acceptance stays PARTIAL
+   until actually performed. Bank imports still require final confirmation in VNN.
 
-| Field | Status | Evidence / limit |
-| --- | --- | --- |
-| SOURCE_HEAD | VERIFIED | Current remote HEAD fetched as `19dc93517dbced67e33f92b036713d3b865203bd`; final repair SHA in PR |
-| PR_STATUS | VERIFIED | PR #2 open and draft; not merged |
-| CI | PARTIAL | Local checks pass; final exact-HEAD Actions evidence recorded in PR after push |
-| PREVIEW_DEPLOYED | NOT_STARTED | Vercel scope access blocked |
-| PREVIEW_COMMIT_MATCH | NOT_STARTED | No new preview ID available |
-| PREVIEW_API_TESTS | PARTIAL | Synthetic handler and browser checks pass; live Blob/auth still unverified |
-| ENV_CONFIG_STATUS | NOT_STARTED | Current keys/targets inaccessible; historical inventory is not current evidence |
-| SCREENSHOT_OCR_TESTED | PARTIAL | Mock-provider normalization/auth/spending gate tested; real OCR not run |
-| BATCH_STAGED | NOT_STARTED | Real batch untouched; env presence and persistence not assumed |
-| BATCH_READBACK | NOT_STARTED | No private authenticated access |
-| GITHUB_PAGES_LIVE | VERIFIED | HTTP 200 and successful deployment evidence above |
-| VERCEL_PRODUCTION_LIVE | PARTIAL | Sync 401; inbox 404; no full family-session test |
-| PRODUCTION_COMMIT | PARTIAL | Pages SHA verified; backend SHA inaccessible |
-| BUDGET_APPLIED | VERIFIED | **NO** real family budget changes; only isolated synthetic records |
-| PHONE_PWA_VERIFIED | PARTIAL | Mobile Chromium and manifest pass; physical iPhone/Shortcut untested |
-| ROLLBACK_AVAILABLE | PARTIAL | Pages commit retained; Vercel rollback ID from issue is unverified in this session |
-
-Historical Vercel rollback reference supplied by the issue:
-`dpl_EfDdXXQv58EeDqBXVDVqrzAJmbWq`. No deployment was promoted, overwritten or
-deleted. Historical public Git objects were not rewritten. This work does not
-claim that all historical artifacts have been cleared of private information.
-
-## Remaining external gates
-
-1. Connect Vercel with access to the specified project/team. Inspect current root,
-   routing, aliases, Blob configuration and environment **key names/targets only**.
-   Deploy a fresh exact-SHA preview and verify its namespace, HTTP/CORS/auth,
-   conditional-write races, readback and logs using synthetic data.
-2. For actual OCR only: owner approves API spending and securely provisions
-   `OPENAI_API_KEY` plus `VNN_SCAN_ENABLED` in the intended preview environment.
-   No paid request or key provisioning was attempted. Private originals were not
-   available and no OCR-on-family-screenshots claim is made.
-3. Private batch inspection requires secure authenticated read-only access; the
-   explicit instruction not to modify real family data remains in force.
-4. Production needs separate owner approval after cloud gates pass. Coordinate
-   writer cutover: older deployments do not honor ETag fencing. Recheck backend
-   rollback evidence and preserve local recovery copies before an approved release.
+Production is not DONE while these gates remain unverified. No test reset, sample
+budget or historical import is permitted to overwrite the real family budget.

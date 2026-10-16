@@ -38,6 +38,8 @@ async function showQuickSetup() {
         5. Поля JSON: action = quick-add; id = UUID; date = форматированная дата; amount = введённое число.<br>
         6. Добавь «Показать результат» и закрепи команду на экране «Домой» как «＋ Расход».<br>
         Валюта по умолчанию — валюта Хранилища. Если хочешь другую, можно добавить поле currency.
+        При ошибке сети повторяй отправку с тем же UUID и теми же полями. Новый UUID означает новую покупку.
+        Показывай успех только при ответе saved = true.
       </p>
       <label class="field"><span>Адрес отправки</span>
         <input type="text" readonly value="${escape(endpoint)}" style="width:100%" />
