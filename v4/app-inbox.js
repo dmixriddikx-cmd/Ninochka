@@ -128,13 +128,17 @@ function inboxPeriodFinished(monthId, weekId) {
   const end = new Date(year, month - 1, finalDay, 23, 59, 59, 999);
   return end.getTime() < Date.now();
 }
+function inboxResolvedDate(item, chosenDates) {
+  // Clearing a date is a deliberate invalid input, not permission to reuse the old date.
+  return chosenDates.has(item.id) ? chosenDates.get(item.id) : item.date;
+}
 async function applyExpenseInbox() {
   if (expenseInbox.applying) return;
   const checked = [...modal.querySelectorAll('[data-inbox-check]:checked')].map(x => x.dataset.inboxCheck);
   const chosenDates = new Map([...modal.querySelectorAll('[data-inbox-date]')]
     .map(input => [input.dataset.inboxDate, input.value]));
   const selected = inboxPending().filter(x => checked.includes(x.id))
-    .map(x => ({ ...x, date: chosenDates.get(x.id) || x.date }));
+    .map(x => ({ ...x, date: inboxResolvedDate(x, chosenDates) }));
   if (!selected.length) return notify('Выбери хотя бы один расход');
   if (selected.some(x => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(x.date)) return true;
