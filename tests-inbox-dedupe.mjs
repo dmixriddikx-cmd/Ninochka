@@ -7,8 +7,9 @@ const source = fs.readFileSync(new URL('./v4/app-inbox.js', import.meta.url), 'u
 const start = source.indexOf('function inboxPreviouslyRecorded(');
 const end = source.indexOf('function inboxPending()', start);
 assert.ok(start >= 0 && end > start, 'Inbox duplicate guards must exist');
+const sandbox = { expenseInbox: {items: []} };
 const guards = vm.runInNewContext(source.slice(start, end) +
-  '\n({inboxPreviouslyRecorded, inboxPossibleDuplicate})');
+  '\n({inboxPreviouslyRecorded, inboxPossibleDuplicate})', sandbox);
 
 const make = (id, importId = null) => ({
   id, importId, name: 'Coffee', amount: 450, currency: 'EUR',
@@ -30,4 +31,11 @@ assert.equal(guards.inboxPossibleDuplicate(incoming, {months:[{weeks:[{expenses:
 const different = {...incoming,id:'scan_456', amount:451};
 assert.equal(guards.inboxPreviouslyRecorded(different, state), false);
 assert.equal(guards.inboxPossibleDuplicate(different, state), false);
+// Two screenshots of an identical-looking purchase must both be reviewable,
+// but the second is unchecked by default so it cannot silently double-debit.
+sandbox.expenseInbox.items = [incoming, {...incoming,id:'scan_999'}];
+const cleanState = {months:[{weeks:[{expenses:[]}]}]};
+assert.equal(guards.inboxPreviouslyRecorded(sandbox.expenseInbox.items[1], cleanState), false);
+assert.equal(guards.inboxPossibleDuplicate(sandbox.expenseInbox.items[0], cleanState), false);
+assert.equal(guards.inboxPossibleDuplicate(sandbox.expenseInbox.items[1], cleanState), true);
 console.log('VNN duplicate regression PASS: distinct identical purchases are reviewable, exact import IDs remain idempotent');
