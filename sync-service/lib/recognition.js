@@ -13,8 +13,10 @@ export function exactMinor(value) {
   return Number.isSafeInteger(minor) && minor > 0 && minor <= 100000000000 ? minor : null;
 }
 export function validDate(s) {
-  return typeof s === 'string' && DATE.test(s) &&
-    new Date(s+'T12:00:00Z').toISOString().slice(0,10) === s;
+  if (typeof s !== 'string' || !DATE.test(s)) return false;
+  const parsed = new Date(s + 'T12:00:00Z');
+  return Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0,10) === s;
 }
 export function bankRows(raw, imageDigest) {
   if (!raw || !Array.isArray(raw.transactions) || raw.transactions.length > 35)
