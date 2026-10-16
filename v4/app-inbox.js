@@ -8,11 +8,20 @@ function inboxWeekId(date) {
   return day <= 7 ? 1 : day <= 14 ? 2 : day <= 21 ? 3 : 4;
 }
 function inboxPreviouslyRecorded(item, data = state) {
+  // Only a stable import ID proves that this precise bank transaction was saved.
+  // A second coffee with the same amount at the same shop is NOT automatically a duplicate.
+  return data.months.some(mm => mm.weeks.some(ww =>
+    ww.expenses.some(row => row.importId === item.id)
+  ));
+}
+function inboxPossibleDuplicate(item, data = state) {
+  // Matching details without an import ID are a warning, not proof.
+  // Leave the decision with the person confirming the expense.
   return data.months.some(mm => mm.weeks.some(ww => ww.expenses.some(row =>
-    row.importId === item.id ||
-    (row.importId == null && String(row.name).toLowerCase() === item.name.toLowerCase() &&
-     row.currency === item.currency && row.amount === item.amount &&
-     String(row.date).slice(0,10) === item.date)
+    row.importId !== item.id &&
+    String(row.name || '').trim().toLowerCase() === String(item.name || '').trim().toLowerCase() &&
+    row.currency === item.currency && Number(row.amount) === Number(item.amount) &&
+    String(row.date || '').slice(0,10) === item.date
   )));
 }
 function inboxPending() { return expenseInbox.items.filter(item => !inboxPreviouslyRecorded(item)); }
@@ -72,10 +81,14 @@ function reviewExpenseInbox() {
     const price = fmt(item.amount, item.currency);
     const category = contractLabel(item.category);
     const target = item.date.slice(0, 7) + ' · неделя ' + inboxWeekId(item.date);
+    const possibleDuplicate = inboxPossibleDuplicate(item);
     return '<label class="ct-expense-row" style="display:flex;gap:10px;align-items:center;margin:9px 0">' +
-      '<input type="checkbox" data-inbox-check="' + escape(item.id) + '" checked style="width:18px;height:18px">' +
+      '<input type="checkbox" data-inbox-check="' + escape(item.id) + '"' +
+      (possibleDuplicate ? '' : ' checked') + ' style="width:18px;height:18px">' +
       '<span style="flex:1;min-width:0"><b>' + escape(item.name) + '</b><small style="display:block">' +
-      escape(target + ' · ' + category) + '</small></span><strong>' + escape(price) + '</strong></label>';
+      escape(target + ' · ' + category) + '</small>' +
+      (possibleDuplicate ? '<small style="display:block">⚠ Возможный дубль — проверь перед добавлением</small>' : '') +
+      '</span><strong>' + escape(price) + '</strong></label>';
   }).join('');
   const currencies = [...new Set(list.map(x => x.currency))].map(currency => {
     const sum = list.filter(x => x.currency === currency).reduce((a,x) => a+x.amount,0);
