@@ -19,6 +19,7 @@ on:
       - "sync-service/api/recognize.js"
       - "tests-auth.mjs"
       - "tests-inbox.mjs"
+      - "tests-sync-lock.mjs"
       - ".github/workflows/pages.yml"
       - ".github/workflows/inbox-check.yml"
 
@@ -44,6 +45,7 @@ jobs:
           node --check sync-service/lib/recognition.js
           node --check v4/app-scan.js
           node --check sync-service/api/sync.js
+          node --check tests-sync-lock.mjs
           node --check sync-service/lib/quick-entry.js
           node --check sync-service/lib/transaction-status.js
           node --check sync-service/lib/token-auth.js
@@ -61,6 +63,7 @@ jobs:
           node tests-transaction-status.mjs
           node tests-recognition.mjs
           node tests-auth.mjs
+          node tests-sync-lock.mjs
           node tests-auth.mjs
           node tests-api-recognition.mjs
           node --test sync-service/quick-entry.test.mjs
