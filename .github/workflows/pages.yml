@@ -50,6 +50,8 @@ jobs:
           node tests-inbox.mjs
           node tests-transaction-status.mjs
           node tests-recognition.mjs
+          node tests-auth.mjs
+          node --check sync-service/lib/token-auth.js
           node tests-api-recognition.mjs
           node --test sync-service/quick-entry.test.mjs
           node tests-ui-contract.mjs _site
