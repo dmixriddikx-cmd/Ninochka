@@ -89,13 +89,17 @@ function reviewExpenseInbox() {
     const category = contractLabel(item.category);
     const target = item.date.slice(0, 7) + ' · неделя ' + inboxWeekId(item.date);
     const possibleDuplicate = inboxPossibleDuplicate(item);
-    return '<label class="ct-expense-row" style="display:flex;gap:10px;align-items:center;margin:9px 0">' +
+    return '<div class="ct-expense-row" style="display:block;margin:9px 0">' +
+      '<label style="display:flex;gap:10px;align-items:center">' +
       '<input type="checkbox" data-inbox-check="' + escape(item.id) + '"' +
       (possibleDuplicate ? '' : ' checked') + ' style="width:18px;height:18px">' +
       '<span style="flex:1;min-width:0"><b>' + escape(item.name) + '</b><small style="display:block">' +
-      escape(target + ' · ' + category) + '</small>' +
+      '<span data-inbox-period>' + escape(target) + '</span> · ' + escape(category) + '</small>' +
       (possibleDuplicate ? '<small style="display:block">⚠ Возможный дубль — проверь перед добавлением</small>' : '') +
-      '</span><strong>' + escape(price) + '</strong></label>';
+      '</span><strong>' + escape(price) + '</strong></label>' +
+      '<label style="display:flex;gap:8px;align-items:center;margin:5px 0 0 28px"><small>Дата:</small>' +
+      '<input type="date" data-inbox-date="' + escape(item.id) + '" value="' + escape(item.date) +
+      '" style="min-width:0;max-width:170px"></label></div>';
   }).join('');
   const initiallySelected = list.filter(item => !inboxPossibleDuplicate(item));
   const currencies = [...new Set(initiallySelected.map(x => x.currency))].map(currency => {
@@ -104,7 +108,7 @@ function reviewExpenseInbox() {
     return fmt(sum,currency);
   }).join(' + ') || '—';
   showModal('Проверка расходов', '<p class="note">Подтвердить можно одним нажатием. ' +
-    'Расходы попадут в недели по дате. Точные повторы будут пропущены, похожие операции нужно проверить. Прошедшая неделя закроется и её итог изменит Хранилище, даже ниже нуля.</p>' +
+    'Проверь даты, особенно если банк написал «Вчера». Расходы попадут в недели по выбранной дате. Точные повторы будут пропущены, похожие операции нужно проверить. Прошедшая неделя закроется и её итог изменит Хранилище, даже ниже нуля.</p>' +
     '<div style="max-height:48vh;overflow:auto">' + rows + '</div>' +
     '<p><strong>Выбрано: <span data-inbox-total>' + escape(currencies) + '</span></strong></p>' +
     '<div class="modal-actions"><button type="button" class="btn primary" data-inbox="apply">Подтвердить и распределить</button></div>');
@@ -127,8 +131,16 @@ function inboxPeriodFinished(monthId, weekId) {
 async function applyExpenseInbox() {
   if (expenseInbox.applying) return;
   const checked = [...modal.querySelectorAll('[data-inbox-check]:checked')].map(x => x.dataset.inboxCheck);
-  const selected = inboxPending().filter(x => checked.includes(x.id));
+  const chosenDates = new Map([...modal.querySelectorAll('[data-inbox-date]')]
+    .map(input => [input.dataset.inboxDate, input.value]));
+  const selected = inboxPending().filter(x => checked.includes(x.id))
+    .map(x => ({ ...x, date: chosenDates.get(x.id) || x.date }));
   if (!selected.length) return notify('Выбери хотя бы один расход');
+  if (selected.some(x => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(x.date)) return true;
+    const parsed = new Date(x.date + 'T12:00:00Z');
+    return !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0,10) !== x.date;
+  })) return notify('Проверь даты покупок перед подтверждением');
   if (!sync.connected || sync.busy || sync.dirty || sync.paused) {
     return notify('Сначала дождись синхронизации общего бюджета');
   }
@@ -204,6 +216,12 @@ async function applyExpenseInbox() {
   }
 }
 document.addEventListener('change', event => {
+  const changedDate = event.target.closest?.('[data-inbox-date]');
+  if (changedDate && /^\d{4}-\d{2}-\d{2}$/.test(changedDate.value)) {
+    const label = changedDate.closest('.ct-expense-row')?.querySelector('[data-inbox-period]');
+    if (label) label.textContent = changedDate.value.slice(0,7) +
+      ' · неделя ' + inboxWeekId(changedDate.value);
+  }
   if (!event.target.closest?.('[data-inbox-check]')) return;
   const checked = [...modal.querySelectorAll('[data-inbox-check]:checked')]
     .map(node => node.dataset.inboxCheck);
