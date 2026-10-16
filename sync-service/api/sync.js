@@ -119,8 +119,17 @@ async function acquireLock() {
   return null;
 }
 
-async function releaseLock() {
-  try { await del(LOCK_PATH); } catch {}
+async function releaseLock(lockId) {
+  // A previous writer must never clear the lock of a newer writer.
+  // In case of a Blob read failure, leave the lock for stale-lock recovery.
+  if (!lockId) return;
+  try {
+    const current = await readJsonBlob(LOCK_PATH);
+    if (current?.id !== lockId) return;
+    await del(LOCK_PATH);
+  } catch {
+    // Avoid deleting an unverified lock owner.
+  }
 }
 
 async function writeBudget(actor, expectedRev, data) {
@@ -155,7 +164,7 @@ async function writeBudget(actor, expectedRev, data) {
     });
     return next;
   } finally {
-    await releaseLock();
+    await releaseLock(lockId);
   }
 }
 
@@ -184,7 +193,7 @@ async function writeQuickBudget(actor, payload) {
     return { duplicate: false, rev: next.rev, monthId: result.monthId,
       weekId: result.weekId, currency: result.row.currency, amountMinor: result.row.amount };
   } finally {
-    await releaseLock();
+    await releaseLock(lockId);
   }
 }
 
