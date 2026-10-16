@@ -35,5 +35,6 @@ jobs:
           node tests-v4.mjs
           mkdir -p _site
           cp index.html contract.css core.js corefix.js sync-config.js app.js _site/
+          cp -r assets _site/
           node tests-ui-contract.mjs _site
           node tests-ui-runtime.mjs _site
