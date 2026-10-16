@@ -45,11 +45,20 @@ async function encodeBankScreenshot(file) {
   }
 }
 
-async function recognizeBankScreenshot(image){
+function screenshotFileDate(file) {
+  // iOS photo-library timestamp is a useful hint, not a guaranteed capture date.
+  const value = Number(file?.lastModified);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const d = new Date(value);
+  if (!Number.isFinite(d.getTime()) || d.getFullYear() < 2020 || d.getFullYear() > 2035) return null;
+  const two = x => String(x).padStart(2, '0');
+  return d.getFullYear() + '-' + two(d.getMonth()+1) + '-' + two(d.getDate());
+}
+async function recognizeBankScreenshot(image,captureDate){
   const response = await fetch(SYNC_API+'/api/recognize',{
     method:'POST',cache:'no-store',
     headers:{Authorization:'Bearer '+sync.token,'Content-Type':'application/json'},
-    body:JSON.stringify({image})
+    body:JSON.stringify({image,captureDate})
   });
   const result=await response.json().catch(()=>({}));
   if(!response.ok){
@@ -78,7 +87,7 @@ async function scanBankFiles(files){
     for(const file of selection){
       try{
         const img=await encodeBankScreenshot(file);
-        const output=await recognizeBankScreenshot(img);
+        const output=await recognizeBankScreenshot(img,screenshotFileDate(file));
         declined+=Number(output.excludedCount||0);
         uncertain+=Number(output.uncertainCount||0);
         if(Array.isArray(output.items))items.push(...output.items);
