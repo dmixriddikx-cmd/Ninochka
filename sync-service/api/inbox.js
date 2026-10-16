@@ -1,5 +1,6 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { get, put, del } from '@vercel/blob';
+import { excludeUnsuccessful } from '../lib/transaction-status.js';
 
 // Independent staging queue; never changes the family budget.
 const ORIGIN = 'https://dmixriddikx-cmd.github.io';
@@ -50,7 +51,8 @@ function seed() {
   if (!raw) return [];
   const data = JSON.parse(raw);
   if (!Array.isArray(data) || data.length > LIMIT) throw new Error('invalid_seed');
-  const cleaned = data.map(cleanItem);
+  const { eligible } = excludeUnsuccessful(data);
+  const cleaned = eligible.map(cleanItem);
   if (new Set(cleaned.map(x => x.id)).size !== cleaned.length) throw new Error('duplicate_seed');
   return cleaned;
 }
@@ -119,15 +121,26 @@ export default async function handler(req, res) {
       }
       const rows = req.body?.items;
       if (!Array.isArray(rows) || !rows.length || rows.length > 50) return reply(res, 400, { error: 'invalid_batch' });
-      const incoming = rows.map(cleanItem);
+      // Drop bank-declined and bank-unsettled rows BEFORE validating amounts:
+      // rejected payments often lack a normal posted amount/date.
+      const { eligible, excluded } = excludeUnsuccessful(rows);
+      const incoming = eligible.map(cleanItem);
       if (new Set(incoming.map(x => x.id)).size !== incoming.length) return reply(res, 400, { error: 'duplicate_ids_in_batch' });
+      if (!incoming.length) {
+        const current = await readInbox();
+        return reply(res, 200, { rev: current.rev, accepted: 0, duplicates: 0,
+          skippedDeclined: excluded.filter(x => x.reason === 'declined').length,
+          skippedUnsettled: excluded.filter(x => x.reason === 'unsettled').length });
+      }
       const result = await mutate(current => {
         const known = new Set(current.items.map(x => x.id));
         const additions = incoming.filter(x => !known.has(x.id));
         if (current.items.length + additions.length > LIMIT) throw new Error('queue_full');
         return { changed: Boolean(additions.length), items: current.items.concat(additions), accepted: additions.length, duplicates: incoming.length - additions.length };
       });
-      return reply(res, 200, { rev: result.rev, accepted: result.accepted, duplicates: result.duplicates });
+      return reply(res, 200, { rev: result.rev, accepted: result.accepted, duplicates: result.duplicates,
+        skippedDeclined: excluded.filter(x => x.reason === 'declined').length,
+        skippedUnsettled: excluded.filter(x => x.reason === 'unsettled').length });
     }
     const user = actor(req);
     if (!user) return reply(res, 401, { error: 'invalid_session' });
