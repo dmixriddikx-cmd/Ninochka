@@ -32,6 +32,11 @@ assert.equal(before.rev,0,'Use a NEW preview, never overwrite an existing datase
 assert.equal(before.data,null);checks+=4;
 const data=core.createState();data.months=[core.blankMonth('2026-10')];data.storage.balance=0;
 for(const week of data.months[0].weeks){week.fund={amount:0,currency:'EUR',rate:1};core.closeWeek(data,week);}
+// Exercise the stored-object ETag on a budget large enough for compression.
+for(let i=0;i<400;i++)core.addExpense(data,data.months[0].weeks[3],{
+ name:'Synthetic compression probe '+i+' '+'.'.repeat(80),amount:'0.01',currency:'EUR',category:'other'});
+const budgetBytes=Buffer.byteLength(JSON.stringify(data));
+assert.ok(budgetBytes>65536 && budgetBytes<1024*1024);checks++;
 core.setRate(data,'USD','EUR',0.9);core.setRate(data,'MDL','EUR',0.05);core.setRate(data,'UAH','EUR',0.02);
 status(await call('/api/sync','PUT',{rev:0,data},nina),200);
 const concurrent=await Promise.all([nina,vova].map((token,i)=>call('/api/sync','PUT',{rev:1,data:{...data,storage:{...data.storage,balance:i+1}}},token)));
@@ -73,5 +78,5 @@ status(await call('/api/sync','PUT',{rev:after.rev,data:confirmed.data},nina),20
 assert.deepEqual(status(await call('/api/sync','GET',undefined,vova),200).data,confirmed.data);checks++;
 status(await call('/api/sync','PUT',{rev:after.rev,data:after.data},vova),409);
 status(await call('/api/recognize','POST',{},nina),503); // No paid request.
-console.log(JSON.stringify({status:'PASS',checks,preview:url.hostname,namespace:before.storageNamespace,
+console.log(JSON.stringify({status:'PASS',checks,budgetBytes,preview:url.hostname,namespace:before.storageNamespace,
   provider:'disabled; no paid request',familyData:'untouched',tests:['auth','CORS','two accounts','Blob read/write/readback','conditional-write race','inbox staging','declined/pending filtering','unconfirmed acknowledgment rejection','date correction','idempotency','restricted Quick Add','concurrent retries','negative FX balance','synthetic rollback']},null,2));

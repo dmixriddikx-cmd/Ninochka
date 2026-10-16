@@ -180,3 +180,19 @@ test('ambiguous storage success retries read the winning IDs instead of debiting
   assert.equal(staged.statusCode,200);assert.equal(staged.body.duplicates,1);
   assert.equal((await call(inbox,'GET')).body.items.length,1);
 });
+
+
+test('exact-preview browser GET without Origin is accepted only with matching fetch metadata',async()=>{
+  const {browserOrigin}=await import('../lib/browser-origin.js');
+  process.env.VERCEL_ENV='preview';process.env.VERCEL_URL='synthetic-preview.vercel.app';
+  const req={method:'GET',headers:{host:process.env.VERCEL_URL,referer:'https://synthetic-preview.vercel.app/', 'sec-fetch-site':'same-origin'}};
+  try {
+    assert.equal(browserOrigin(req),'https://synthetic-preview.vercel.app');
+    assert.equal(browserOrigin({...req,headers:{...req.headers,origin:'https://evil.example'}}),null);
+    for(const [key,value] of [['host','evil.example'],['referer','https://evil.example/'],['referer','invalid'],['sec-fetch-site','cross-site']])
+      assert.equal(browserOrigin({...req,headers:{...req.headers,[key]:value}}),null);
+    assert.equal(browserOrigin({...req,method:'POST'}),null);
+    assert.equal(browserOrigin({...req,headers:{host:req.headers.host}}),null);
+    process.env.VERCEL_ENV='production';assert.equal(browserOrigin(req),null);
+  } finally {delete process.env.VERCEL_ENV;delete process.env.VERCEL_URL;}
+});

@@ -121,3 +121,18 @@ cloud request. A new service worker waits for existing tabs to close. The browse
 suite includes real offline restarts, persistence and authenticated online
 readback against a synthetic local service. This does not establish physical
 iPhone installation or Apple Shortcuts behavior.
+
+Real browser acceptance is opt-in: `npm run test:live --prefix tools/browser`
+requires `VNN_PREVIEW_URL`, a synthetic `VNN_PREVIEW_LOGIN_PIN`, and the expected
+`VNN_SOURCE_SHA`. It loads the deployed QA application, checks its source manifest
+and isolated namespace, signs into both test accounts, edits and confirms a queued
+purchase through the actual UI, and verifies the saved cloud state. It also tests
+the real disabled-OCR upload response. No HTTP or Blob mocks are used. A system
+browser can be selected with `VNN_CHROMIUM_PATH`; the runner respects `HTTPS_PROXY`.
+For terminal live checks in a proxied Node 24 environment use `NODE_USE_ENV_PROXY=1`.
+Do not disable TLS verification or use production credentials in these runners.
+
+Same-origin preview browser GET requests normally have no Origin header. The
+preview origin guard accepts that case only with the exact deployment Host,
+matching Referer and `Sec-Fetch-Site: same-origin`; all session checks remain in
+force. Production keeps the approved GitHub Pages Origin policy.

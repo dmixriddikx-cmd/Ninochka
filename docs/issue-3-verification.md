@@ -22,7 +22,7 @@ The owner's current instruction authorizes a controlled release once gates pass.
 | Historical batch | Initial-batch env key exists; persistence/application status is UNKNOWN until authenticated production inspection. No private screenshot attachments supplied to this run |
 | OCR | Disabled: `OPENAI_API_KEY` and `VNN_SCAN_ENABLED` absent. Mock-provider tests are not real OCR |
 | Legacy artifacts | Additional CSS, unused source fragments and payload files are not part of the active UI bundle; retained rather than deleted or rewritten |
-| Observability | Connector build/runtime log operations still return 403 for scope `jwmhnfndnc-3728`; direct terminal HTTP checks work. No CLI credentials; cloud dashboard requires sign-in |
+| Observability | Explicit team-scoped calls and connector build/runtime logs return 403; project/deployment/env operations work by the same project ID without an explicit team selector. Direct HTTP works through the configured proxy. CLI has no credentials |
 
 ## Repairs
 
@@ -100,3 +100,48 @@ or READY state may substitute for this result.
 
 Production is not DONE while these gates remain unverified. No test reset, sample
 budget or historical import is permitted to overwrite the real family budget.
+
+
+## Resumed live integration evidence
+
+Fetched current source `b50d02de5d2f9b5253a893724142c5d24062e1b9`; its two CI
+runs `38878156722` and `38878163453` succeeded. PR head now agrees with the branch;
+the old PR snapshot discrepancy is resolved.
+
+A new inline exact-source QA deployment, `dpl_2mu1ARz55JahbmeSg5SUjnNqxh3B`,
+reached READY at `ninochka-sync-fqnt09txb-jwmhnfndnc-3728.vercel.app` with
+`sync-service/` root and the existing approved frontend under `public/`.
+`/verification.json` identifies the source and SHA-256 hashes of all 12 uploaded
+backend files. No Git integration or production alias was changed.
+
+The real-cloud runner completed **53 checks** against actual private Blob:
+both accounts, auth/CORS, revision conflicts, inbox stage/acknowledge, filtering,
+corrected dates, replay idempotency, restricted/concurrent Quick Add, negative FX
+balance and revision-guarded synthetic rollback. Namespace isolation was asserted
+before its first write. No family data or paid provider was touched.
+
+The first actual preview browser login exposed a gap that CLI tests missed:
+same-origin browser GETs omit Origin. The exact-preview origin guard now requires
+matching Host, Referer and browser fetch metadata for this case. Foreign origins
+remain denied; production Origin policy is unchanged. Node regressions cover
+these boundaries. `tools/browser/live.mjs` now tests the real deployed frontend
+and API without mocked HTTP/storage. The cloud runner also writes a budget larger
+than 64 KiB to exercise stored-object ETags under compression.
+
+The final immutable source, fresh deployment after these repairs, complete CI,
+large-budget live checks and browser outcomes are recorded in PR #2. A READY
+state or the earlier 53-check result is not substituted for that final evidence.
+
+Environment audit (names and targets only): the six existing production keys are
+preserved, the three `NINOCHKA_PREVIEW_*` synthetic login/session keys target only
+preview, and `OPENAI_API_KEY` / `VNN_SCAN_ENABLED` are absent. Synthetic fixtures
+were refreshed only for future preview deployments; no family PIN or production
+secret changed. Branch-scoped env creation is unavailable while the project has
+no connected Git repository; this was explicitly diagnosed as a Vercel 400.
+
+Historical source screenshots are absent from this workspace. The private batch
+env key exists, but its value was not inspected and no family login/session is
+available for a production persistence/duplicate audit or a verified financial
+backup. Batch state remains unknown and no batch was applied. Actual OCR needs
+separate spending authorization and secure provider configuration. These and the
+production writer barrier/financial rollback gate remain mandatory before release.
