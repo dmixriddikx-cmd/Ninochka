@@ -25,7 +25,9 @@ export function bankRows(raw, imageDigest) {
   const seen = new Set();
   raw.transactions.forEach((t,i) => {
     const result=bankOutcome({
-      bankStatus:t.bankStatus, transactionStatus:t.status,
+      // Bank screenshots use 'status' for actual posting state. Unlike inbox
+      // queue status, 'Pending' here must be excluded before any staging.
+      bankStatus:t.bankStatus || t.status, transactionStatus:t.status,
       paymentStatus:t.paymentStatus, statusText:t.statusText,
       name:t.name, description:t.description
     });
