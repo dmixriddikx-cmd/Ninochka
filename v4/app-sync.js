@@ -114,6 +114,7 @@ async function revokeFamilyPasskey(id) {
   try{
     await passkeyRequest('passkey-revoke',{id,pin,login:sync.actor==='nina'?'Нина':'Вова'},true);
     notify('Ключ удалён из VNN.');
+    sync.busy=false;
     await manageFamilyPasskeys();
   }catch(error){notify(error?.message||'Не удалось удалить ключ.');}
   finally{sync.busy=false;}
