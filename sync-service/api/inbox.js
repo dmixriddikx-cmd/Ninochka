@@ -2,9 +2,9 @@ import { timingSafeEqual } from 'node:crypto';
 import { signedActor as actor } from '../lib/token-auth.js';
 import { readDocument, replaceDocument, WriteConflict } from '../lib/blob-store.js';
 import { excludeUnsuccessful } from '../lib/transaction-status.js';
+import { browserOrigin } from '../lib/browser-origin.js';
 
 // Independent staging queue; never changes the family budget.
-const ORIGIN = 'https://dmixriddikx-cmd.github.io';
 const PATH = 'family-expense-inbox.json';
 const LIMIT = 200;
 const CURRENCIES = new Set(['EUR', 'USD', 'MDL', 'UAH']);
@@ -73,14 +73,15 @@ async function mutate(fn) {
 }
 export default async function handler(req, res) {
   const origin = req.headers.origin;
-  if (origin && origin !== ORIGIN) return reply(res, 403, { error: 'origin_denied' });
-  if (origin === ORIGIN) {
+  const ORIGIN = browserOrigin(req);
+  if (origin && !ORIGIN) return reply(res, 403, { error: 'origin_denied' });
+  if (ORIGIN) {
     res.setHeader('Access-Control-Allow-Origin', ORIGIN);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
   }
-  if (req.method === 'OPTIONS') return origin === ORIGIN ? res.status(204).end() : reply(res, 403, { error: 'origin_denied' });
+  if (req.method === 'OPTIONS') return ORIGIN ? res.status(204).end() : reply(res, 403, { error: 'origin_denied' });
   try {
     if (req.method === 'POST') {
       const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
@@ -109,7 +110,7 @@ export default async function handler(req, res) {
       const result = await mutate(current => {
         const known = new Set(current.items.map(x => x.id));
         const additions = incoming.filter(x => !known.has(x.id));
-        if (current.items.length + additions.length > LIMIT) throw new Error('queue_full');
+        if (current.items.filter(x => x.status === 'pending').length + additions.length > LIMIT) throw new Error('queue_full');
         return { changed: Boolean(additions.length), items: current.items.concat(additions), accepted: additions.length, duplicates: incoming.length - additions.length };
       });
       return reply(res, 200, { rev: result.rev, accepted: result.accepted, duplicates: result.duplicates,
@@ -128,12 +129,19 @@ export default async function handler(req, res) {
         return reply(res, 400, { error: 'invalid_ids' });
       }
       const chosen = new Set(ids);
+      // Acknowledgement must never hide purchases that did not reach the budget.
+      const saved = (await readDocument('family-budget.json')).data?.data;
+      const recorded = new Set((saved?.months || []).flatMap(month =>
+        (month.weeks || []).flatMap(week => (week.expenses || []).map(row => row.importId))));
+      if (ids.some(id => !recorded.has(id))) return reply(res, 409, { error: 'expenses_not_confirmed' });
       const result = await mutate(current => {
         let changed = false;
         const items = current.items.map(row => {
           if (chosen.has(row.id) && row.status === 'pending') {
             changed = true;
-            return { ...row, status: 'imported', importedAt: new Date().toISOString(), importedBy: user };
+            // Retain the exact ID as a replay tombstone, without retaining a
+            // second full copy of the financial record in the staging queue.
+            return { id: row.id, status: 'imported', importedAt: new Date().toISOString(), importedBy: user };
           }
           return row;
         });

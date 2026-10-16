@@ -3,8 +3,8 @@ import { put } from '@vercel/blob';
 import { readDocument, replaceDocument, storagePath, WriteConflict } from '../lib/blob-store.js';
 import { applyQuickExpense, QuickError } from '../lib/quick-entry.js';
 import { signedActor, sessionSecret } from '../lib/token-auth.js';
+import { browserOrigin } from '../lib/browser-origin.js';
 
-const ORIGIN = 'https://dmixriddikx-cmd.github.io';
 const DATA_PATH = 'family-budget.json';
 const MAX_BYTES = 1024 * 1024;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -138,12 +138,13 @@ async function writeQuickBudget(actor, payload) {
 
 export default async function handler(req, res) {
   const origin = req.headers.origin;
+  const ORIGIN = browserOrigin(req);
   const action = req.body?.action;
   // An iOS Shortcut sends no Origin header; accept only a signed, quick-add POST.
   // All other endpoints retain the existing same-origin browser restriction.
   const shortcutCall = !origin && req.method === 'POST' && action === 'quick-add';
-  if (origin !== ORIGIN && !shortcutCall) return send(res, 403, { error: 'origin_denied' });
-  if (origin === ORIGIN) {
+  if (!ORIGIN && !shortcutCall) return send(res, 403, { error: 'origin_denied' });
+  if (ORIGIN) {
     res.setHeader('Access-Control-Allow-Origin', ORIGIN);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
@@ -188,7 +189,9 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const current = await readBudget();
-      return send(res, 200, { ...current, actor });
+      return send(res, 200, { ...current, actor,
+        environment: process.env.VERCEL_ENV || 'development',
+        ...(process.env.VERCEL_ENV === 'preview' ? { storageNamespace: storagePath('') } : {}) });
     }
 
     const { rev, data } = req.body || {};

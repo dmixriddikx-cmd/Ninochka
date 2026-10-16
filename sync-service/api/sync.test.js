@@ -121,13 +121,19 @@ test('inbox concurrent stage, replay, filtering, acknowledgement and readback',a
   assert.equal(filtered.body.accepted,0);
   assert.equal(filtered.body.skippedDeclined,2); assert.equal(filtered.body.skippedUnsettled,2);
   assert.equal((await call(inbox,'POST',{items:[{...row('invalid-1'),date:'2026-02-30'}]},ingest,null)).statusCode,400);
+  assert.ok(!documents.has('family-budget.json'),'staging never debits budget');
+  assert.equal((await call(inbox,'PATCH',{ids:['synthetic-1']})).statusCode,409,'Unconfirmed purchases cannot disappear');
+  const confirmed=budget();
+  confirmed.months[0].weeks[1].expenses.push({...row('synthetic-1'),importId:'synthetic-1',rate:1});
+  assert.equal((await call(sync,'PUT',{rev:0,data:confirmed})).statusCode,200);
   assert.equal((await call(inbox,'PATCH',{ids:['synthetic-1']})).statusCode,200);
   assert.equal((await call(inbox,'PATCH',{ids:['synthetic-1']})).statusCode,200);
   pending=await call(inbox,'GET'); assert.deepEqual(pending.body.items.map(x=>x.id),['synthetic-2']);
-  assert.ok(!documents.has('family-budget.json'),'staging never debits budget');
+  assert.equal((await call(inbox,'POST',{items:[row('synthetic-1')]},ingest,null)).body.duplicates,1,'Acknowledged tombstones preserve replay protection');
 });
 
 test('preview paths and historical seeds cannot touch family documents',async()=>{
+  const productionBefore=structuredClone(documents.get('family-budget.json'));
   const productionToken=token();
   process.env.VERCEL_ENV='preview'; delete process.env.VERCEL_URL;
   assert.throws(()=>storagePath('family-budget.json'),/preview_storage_not_isolated/);
@@ -142,7 +148,7 @@ test('preview paths and historical seeds cannot touch family documents',async()=
     assert.equal((await call(inbox,'GET',null,previewToken)).body.items.length,0);
     const result=await call(sync,'PUT',{rev:0,data:budget()},previewToken); assert.equal(result.statusCode,200);
     assert.ok(documents.has('previews/synthetic-preview.vercel.app/family-budget.json'));
-    assert.ok(!documents.has('family-budget.json'));
+    assert.deepEqual(documents.get('family-budget.json'),productionBefore,'Production document remains byte-for-byte unchanged');
   } finally {delete process.env.VERCEL_ENV;delete process.env.VERCEL_URL;delete process.env.NINOCHKA_INBOX_INITIAL_BATCH;delete process.env.NINOCHKA_PREVIEW_SESSION_SECRET;}
 });
 
