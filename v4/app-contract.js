@@ -60,7 +60,7 @@ function contractCurrencyFlag(currency){return ({MDL:'🇲🇩',EUR:'🇪🇺',U
 
 function contractNav(){const items=[['home','⌂','home'],['week','▤','expensesTab'],['plan','▦','plan'],['storage','▣','storageTab'],['more','•••','more']];return `<nav class="ct-nav">${items.map(([id,ico,key])=>`<button class="ct-nav-item ${view.tab===id?'active':''}" data-tab="${id}"><b>${ico}</b><span>${tr(key)}</span></button>`).join('')}</nav>`}
 function contractTop(kind='home'){
-  if(kind==='home')return `<header class="ct-top ct-top-home"><button class="ct-top-icon" aria-hidden="true">♡</button><div class="ct-brand">${resolvedDarkFinal()?tr('title'):'Ninochka'} <span>♥</span></div><button class="ct-top-icon" data-action="settings" aria-label="${tr('settings')}">⚙</button></header>`;
+  if(kind==='home')return `<header class="ct-top ct-top-home"><button class="ct-top-icon" aria-hidden="true">♡</button><div class="ct-brand">VNN <span>♥</span></div><button class="ct-top-icon" data-action="settings" aria-label="${tr('settings')}">⚙</button></header>`;
   const title=kind==='storage'?tr('storage'):kind==='plan'?tr('plan'):kind==='more'?tr('more'):tr('currentWeek');
   return `<header class="ct-top"><button class="ct-top-icon" data-final-action="back-home">‹</button><div class="ct-brand ct-brand-small">${title}</div><button class="ct-top-icon ${kind==='storage'?'':'ct-hidden'}" ${kind==='storage'?'data-action="settings"':''}>${kind==='storage'?'⚙':'•'}</button></header>`
 }
