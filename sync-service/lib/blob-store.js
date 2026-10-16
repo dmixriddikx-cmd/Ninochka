@@ -23,12 +23,19 @@ export function storagePath(path) {
 export async function readDocument(path) {
   // Compression can give GET a representation ETag that differs from Blob's
   // stored-object ETag. Conditional writes must use the identity representation.
-  const result = await get(storagePath(path), { access: 'private', useCache: false,
-    headers: { 'accept-encoding': 'identity' } });
-  if (!result) return { data: null, etag: null };
-  const etag = result.blob.etag;
-  if (!etag) throw new Error('blob_etag_missing');
-  return { data: JSON.parse(await new Response(result.stream).text()), etag };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const result = await get(storagePath(path), { access: 'private', useCache: false,
+        headers: { 'accept-encoding': 'identity' }, abortSignal: AbortSignal.timeout(6000) });
+      if (!result) return { data: null, etag: null };
+      const etag = result.blob.etag;
+      if (!etag) throw new Error('blob_etag_missing');
+      return { data: JSON.parse(await new Response(result.stream).text()), etag };
+    } catch (error) {
+      if (attempt === 2 || !retryableStorageError(error)) throw error;
+      await storageRetry(attempt);
+    }
+  }
 }
 
 export async function replaceDocument(path, snapshot, next) {
