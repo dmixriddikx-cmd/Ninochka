@@ -27,9 +27,12 @@ function cleanItem(item) {
   const amount = Number(item.amount);
   const currency = String(item.currency || '');
   const category = String(item.category || 'other');
+  const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date)
+    ? new Date(date + 'T12:00:00Z') : null;
+  const validDate = parsedDate && Number.isFinite(parsedDate.getTime()) &&
+    parsedDate.toISOString().slice(0, 10) === date;
   if (!/^[a-zA-Z0-9:_-]{4,120}$/.test(id) || !name || name.length > 120 ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-      new Date(date + 'T12:00:00Z').toISOString().slice(0, 10) !== date ||
+      !validDate ||
       !Number.isSafeInteger(amount) || amount <= 0 || amount > 100000000000 ||
       !CURRENCIES.has(currency) || !CATEGORIES.has(category)) throw new Error('invalid_item');
   return { id, name, date, amount, currency, category, status: 'pending' };
