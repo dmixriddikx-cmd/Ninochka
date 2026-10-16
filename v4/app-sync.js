@@ -441,7 +441,7 @@ function authScreen() {
   return `<main class="ct-auth-shell">
     <section class="ct-auth-card">
       <div class="ct-auth-brand">
-        <div class="ct-auth-title">Ниночка <span>♡</span></div>
+        <div class="ct-auth-title">VNN <span>♡</span></div>
         <div class="ct-auth-subtitle">СЕМЕЙНЫЙ БЮДЖЕТ</div>
         <div class="ct-auth-motto">Наш дом <i>•</i> Наши планы <i>•</i> Вместе</div>
       </div>
@@ -459,7 +459,7 @@ function authScreen() {
 
 let authRestorePending = Boolean(SYNC_API && sync.token && localStorage.getItem(SYNC_READY) === '1');
 function authRestoreScreen(){
-  return '<main class="ct-auth-shell ct-auth-restoring" aria-busy="true"><section class="ct-auth-card"><div class="ct-auth-brand"><div class="ct-auth-title">Ниночка <span>♡</span></div><div class="ct-auth-subtitle">СЕМЕЙНЫЙ БЮДЖЕТ</div></div><div class="ct-auth-restoring-mark">♡</div></section></main>';
+  return '<main class="ct-auth-shell ct-auth-restoring" aria-busy="true"><section class="ct-auth-card"><div class="ct-auth-brand"><div class="ct-auth-title">VNN <span>♡</span></div><div class="ct-auth-subtitle">СЕМЕЙНЫЙ БЮДЖЕТ</div></div><div class="ct-auth-restoring-mark">♡</div></section></main>';
 }
 render = function () {
   setDoc();
