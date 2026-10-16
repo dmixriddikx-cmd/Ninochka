@@ -2,7 +2,7 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto
 import { put } from '@vercel/blob';
 import { readDocument, replaceDocument, storagePath, WriteConflict } from '../lib/blob-store.js';
 import { applyQuickExpense, QuickError } from '../lib/quick-entry.js';
-import { signedActor } from '../lib/token-auth.js';
+import { signedActor, sessionSecret } from '../lib/token-auth.js';
 
 const ORIGIN = 'https://dmixriddikx-cmd.github.io';
 const DATA_PATH = 'family-budget.json';
@@ -12,8 +12,8 @@ const QUICK_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 function validBudget(data) {
   const currencies = ['EUR', 'USD', 'MDL', 'UAH'];
-  const money = item => item && Number.isSafeInteger(item.amount) &&
-    item.amount >= 0 && currencies.includes(item.currency) &&
+  const money = (item, signed = false) => item && Number.isSafeInteger(item.amount) &&
+    (signed || item.amount >= 0) && currencies.includes(item.currency) &&
     (item.rate == null || (Number.isFinite(item.rate) && item.rate > 0));
   return data?.schemaVersion === 4 && Array.isArray(data.months) &&
     new Set(data.months.map(m => m?.id)).size === data.months.length &&
@@ -25,7 +25,7 @@ function validBudget(data) {
       m.weeks.every(w => w && [1,2,3,4].includes(w.id) &&
         ['open','closed'].includes(w.status) && money(w.fund) &&
         Number.isSafeInteger(w.settlement) && Array.isArray(w.expenses) &&
-        w.expenses.every(money)));
+        w.expenses.every(item => money(item, true))));
 }
 
 function send(res, status, body) {
@@ -48,10 +48,11 @@ function safeHexEqual(actualHex, expectedHex) {
 function actorFromCredentials(login, pin) {
   const normalized = normalizeLogin(login);
   const actual = hashCredential(normalized, pin);
+  const prefix = process.env.VERCEL_ENV === 'preview' ? 'NINOCHKA_PREVIEW_' : '';
   const candidates = normalized === 'нина'
-    ? [['nina', process.env.NINA_CREDENTIAL_SHA256]]
+    ? [['nina', process.env[prefix + 'NINA_CREDENTIAL_SHA256']]]
     : normalized === 'вова'
-      ? [['volodymyr', process.env.VOLODYMYR_CREDENTIAL_SHA256]]
+      ? [['volodymyr', process.env[prefix + 'VOLODYMYR_CREDENTIAL_SHA256']]]
       : [];
   for (const [actor, expected] of candidates) {
     if (safeHexEqual(actual, expected)) return actor;
@@ -60,7 +61,7 @@ function actorFromCredentials(login, pin) {
 }
 
 function signSession(actor) {
-  const secret = process.env.NINOCHKA_SESSION_SECRET;
+  const secret = sessionSecret();
   if (!secret) throw new Error('Session secret is not configured');
   const expiresAt = Date.now() + SESSION_TTL_MS;
   const payload = Buffer.from(JSON.stringify({ actor, expiresAt })).toString('base64url');
@@ -77,7 +78,7 @@ function issueQuickToken(actor) {
   const payload = Buffer.from(JSON.stringify({
     purpose: 'quick-expense', actor, expiresAt, nonce: randomUUID()
   })).toString('base64url');
-  const signature = createHmac('sha256', process.env.NINOCHKA_SESSION_SECRET)
+  const signature = createHmac('sha256', sessionSecret())
     .update(payload).digest('base64url');
   return { token: payload + '.' + signature, expiresAt };
 }
@@ -154,6 +155,7 @@ export default async function handler(req, res) {
     if (action === 'login') {
       const actor = actorFromCredentials(req.body?.login, req.body?.pin);
       if (!actor) return send(res, 401, { error: 'invalid_credentials' });
+      if (!sessionSecret()) return send(res, 503, { error: 'login_not_configured' });
       const session = signSession(actor);
       return send(res, 200, { actor, token: session.token, expiresAt: session.expiresAt });
     }

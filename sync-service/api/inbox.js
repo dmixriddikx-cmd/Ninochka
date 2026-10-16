@@ -84,8 +84,9 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'POST') {
       const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-      const authorizedImporter = Boolean(process.env.NINOCHKA_INBOX_INGEST_TOKEN &&
-        equal(token, process.env.NINOCHKA_INBOX_INGEST_TOKEN));
+      const ingestToken = process.env.VERCEL_ENV === 'preview'
+        ? process.env.NINOCHKA_PREVIEW_INBOX_INGEST_TOKEN : process.env.NINOCHKA_INBOX_INGEST_TOKEN;
+      const authorizedImporter = Boolean(ingestToken && equal(token, ingestToken));
       // A signed family login may stage recognized rows for one final confirmation.
       // The old ingestion token still works for trusted external automation.
       const authorizedFamilyScan = req.body?.action === 'stage-recognized' && Boolean(actor(req));

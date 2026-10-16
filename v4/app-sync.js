@@ -19,6 +19,20 @@ const sync = {
 };
 const saveLocalOnly = save;
 
+if (globalThis.navigator?.serviceWorker && globalThis.isSecureContext) {
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
+}
+
+function cachedSessionActor() {
+  try {
+    const part = sync.token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
+    const claim = JSON.parse(atob(part));
+    return ['nina', 'volodymyr'].includes(claim.actor) &&
+      (!claim.purpose || claim.purpose === 'session') && claim.expiresAt > Date.now()
+      ? claim.actor : null;
+  } catch { return null; }
+}
+
 function syncActorName() {
   return sync.actor === 'volodymyr' ? 'Вова' : 'Нина';
 }
@@ -281,7 +295,12 @@ async function connectSync(login = '', pin = '', restoring = false) {
     if (restoring && error.status === 401) clearSyncSession('Сессия закончилась. Войди снова.');
     else {
       sync.error = error.message || 'Не удалось подключиться.';
-      sync.connected = false;
+      // A previously authenticated installation may reopen its local recovery
+      // copy offline. Server authentication still gates every cloud operation.
+      const cachedActor = restoring && (!error.status || error.status === 503) &&
+        localStorage.getItem(SYNC_READY) === '1' && cachedSessionActor();
+      sync.connected = Boolean(cachedActor);
+      if (cachedActor) sync.actor = cachedActor;
     }
   } finally {
     if (restoring) authRestorePending = false;

@@ -36,3 +36,20 @@ let s4=c.createState();s4.storage.currency='USD';c.setRate(s4,'UAH','USD',uahUsd
 const probe=c.addExpense(s4,w4,{name:'UAH live-route probe',category:'clothes',amount:'350',currency:'UAH'});
 eq(c.weekSpent(s4,w4),778,'350 UAH converts to USD cents');
 console.log('UAH 350 conversion test PASS');
+
+// A closed week's settlement is stored in the Storage denomination too.
+// Reopening after changing EUR -> USD must reverse exactly the converted sum.
+let rebased=c.createState();
+rebased.storage.balance=10000;
+const rebasedWeek=c.month(rebased).weeks[0];
+c.setWeekFund(rebased,rebasedWeek,'100','EUR');
+c.addExpense(rebased,rebasedWeek,{name:'Synthetic expense',amount:'20',currency:'EUR'});
+c.closeWeek(rebased,rebasedWeek);
+c.changeStorageCurrency(rebased,'USD',2);
+eq(rebasedWeek.settlement,16000,'closed settlement rebased');
+eq(c.historicalSaved(rebased),16000,'historical savings rebased');
+c.updateExpense(rebased,rebasedWeek,rebasedWeek.expenses[0].id,{amount:'30'});
+eq(rebased.storage.balance,34000,'closed correction after currency change');
+c.reopenWeek(rebased,rebasedWeek);
+eq(rebased.storage.balance,20000,'reopen after currency change restores principal');
+console.log('Closed-week FX correction/reopen/savings regression PASS');

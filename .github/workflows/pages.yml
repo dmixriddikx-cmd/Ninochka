@@ -42,6 +42,7 @@ jobs:
           mkdir -p _site/assets
           BUILD_ID="$(git rev-parse --short HEAD)"
           sed "s/__BUILD_ID__/${BUILD_ID}/g" index.html > _site/index.html
+          sed "s/__BUILD_ID__/${BUILD_ID}/g" sw.js > _site/sw.js
           cp contract.css core.js corefix.js sync-config.js _site/
           cp -r assets/* _site/assets/
           cp manifest.webmanifest _site/

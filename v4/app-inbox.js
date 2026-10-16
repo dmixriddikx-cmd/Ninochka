@@ -99,7 +99,14 @@ function reviewExpenseInbox() {
       '</span><strong>' + escape(price) + '</strong></label>' +
       '<label style="display:flex;gap:8px;align-items:center;margin:5px 0 0 28px"><small>Дата:</small>' +
       '<input type="date" data-inbox-date="' + escape(item.id) + '" value="' + escape(item.date) +
-      '" style="min-width:0;max-width:170px"></label></div>';
+      '" style="min-width:0;max-width:170px"></label>' +
+      '<label class="field"><span>Покупка</span><input data-inbox-name="' + escape(item.id) +
+      '" maxlength="120" value="' + escape(item.name) + '"></label>' +
+      '<div style="display:flex;gap:8px"><label class="field" style="flex:1;min-width:0"><span>Сумма</span>' +
+      '<input data-inbox-amount="' + escape(item.id) + '" inputmode="decimal" value="' + core.moneyInput(item.amount) +
+      '"></label><label class="field"><span>Валюта</span><select data-inbox-currency="' + escape(item.id) + '">' +
+      core.CURRENCIES.map(c => '<option value="' + c + '"' + (c === item.currency ? ' selected' : '') + '>' + c + '</option>').join('') +
+      '</select></label></div></div>';
   }).join('');
   const initiallySelected = list.filter(item => !inboxPossibleDuplicate(item));
   const currencies = [...new Set(initiallySelected.map(x => x.currency))].map(currency => {
@@ -132,13 +139,26 @@ function inboxResolvedDate(item, chosenDates) {
   // Clearing a date is a deliberate invalid input, not permission to reuse the old date.
   return chosenDates.has(item.id) ? chosenDates.get(item.id) : item.date;
 }
+function inboxReviewedItem(item) {
+  const value = field => [...modal.querySelectorAll('[data-inbox-' + field + ']')]
+    .find(node => node.getAttribute('data-inbox-' + field) === item.id)?.value;
+  const name = String(value('name') ?? item.name).trim();
+  const amount = core.cents(value('amount') ?? core.moneyInput(item.amount));
+  const currency = value('currency') ?? item.currency;
+  if (!name || name.length > 120 || amount <= 0 || !core.CURRENCIES.includes(currency))
+    throw new Error('Проверь название, сумму и валюту покупки');
+  return { ...item, name, amount, currency };
+}
 async function applyExpenseInbox() {
   if (expenseInbox.applying) return;
   const checked = [...modal.querySelectorAll('[data-inbox-check]:checked')].map(x => x.dataset.inboxCheck);
   const chosenDates = new Map([...modal.querySelectorAll('[data-inbox-date]')]
     .map(input => [input.dataset.inboxDate, input.value]));
-  const selected = inboxPending().filter(x => checked.includes(x.id))
-    .map(x => ({ ...x, date: inboxResolvedDate(x, chosenDates) }));
+  let selected;
+  try {
+    selected = inboxPending().filter(x => checked.includes(x.id))
+      .map(x => ({ ...inboxReviewedItem(x), date: inboxResolvedDate(x, chosenDates) }));
+  } catch { return notify('Проверь название, сумму и валюту покупок перед подтверждением'); }
   if (!selected.length) return notify('Выбери хотя бы один расход');
   if (selected.some(x => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(x.date)) return true;
@@ -154,6 +174,9 @@ async function applyExpenseInbox() {
   let localVersion = syncLocalVersion;
   try {
     const latest = await syncRequest('GET');
+    if (syncLocalVersion !== localVersion || sync.dirty) {
+      throw new Error('Есть новые местные изменения. Дождись синхронизации и проверь список ещё раз.');
+    }
     if (Number(latest.rev) !== Number(sync.rev)) {
       sync.rev = latest.rev;
       localStorage.setItem(SYNC_REV, String(sync.rev));
@@ -161,7 +184,9 @@ async function applyExpenseInbox() {
       throw new Error('Бюджет обновился на другом телефоне. Проверь расходы и нажми ещё раз.');
     }
     for (const currency of new Set(selected.map(x => x.currency))) await ensureRateFor(currency);
-    localVersion = syncLocalVersion;
+    if (syncLocalVersion !== localVersion || sync.dirty) {
+      throw new Error('Есть новые местные изменения. Дождись синхронизации и проверь список ещё раз.');
+    }
     const draft = structuredClone(state);
     const affected = new Map();
     let inserted = 0;
@@ -248,10 +273,16 @@ document.addEventListener('change', event => {
     if (label) label.textContent = changedDate.value.slice(0,7) +
       ' · неделя ' + inboxWeekId(changedDate.value);
   }
-  if (!event.target.closest?.('[data-inbox-check]')) return;
+  if (!event.target.closest?.('[data-inbox-check],[data-inbox-amount],[data-inbox-currency]')) return;
   const checked = [...modal.querySelectorAll('[data-inbox-check]:checked')]
     .map(node => node.dataset.inboxCheck);
-  const chosen = inboxPending().filter(item => checked.includes(item.id));
+  let chosen;
+  try { chosen = inboxPending().filter(item => checked.includes(item.id)).map(inboxReviewedItem); }
+  catch {
+    const label = modal.querySelector('[data-inbox-total]');
+    if (label) label.textContent = 'Проверь сумму';
+    return;
+  }
   const total = [...new Set(chosen.map(x => x.currency))].map(currency =>
     fmt(chosen.filter(x => x.currency === currency)
       .reduce((sum,x) => sum + x.amount, 0),currency)

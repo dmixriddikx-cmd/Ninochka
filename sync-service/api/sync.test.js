@@ -128,14 +128,30 @@ test('inbox concurrent stage, replay, filtering, acknowledgement and readback',a
 });
 
 test('preview paths and historical seeds cannot touch family documents',async()=>{
+  const productionToken=token();
   process.env.VERCEL_ENV='preview'; delete process.env.VERCEL_URL;
   assert.throws(()=>storagePath('family-budget.json'),/preview_storage_not_isolated/);
   process.env.VERCEL_URL='synthetic-preview.vercel.app';
+  process.env.NINOCHKA_PREVIEW_SESSION_SECRET='separate-synthetic-preview-secret';
+  const payload=Buffer.from(JSON.stringify({actor:'nina',expiresAt:Date.now()+3600000})).toString('base64url');
+  const previewToken=payload+'.'+createHmac('sha256',process.env.NINOCHKA_PREVIEW_SESSION_SECRET).update(payload).digest('base64url');
   process.env.NINOCHKA_INBOX_INITIAL_BATCH=JSON.stringify([row('private-seed-do-not-copy')]);
   try {
-    assert.equal((await call(inbox,'GET')).body.items.length,0);
-    const result=await call(sync,'PUT',{rev:0,data:budget()}); assert.equal(result.statusCode,200);
+    assert.equal((await call(inbox,'GET',null,productionToken)).statusCode,401);
+    assert.equal((await call(inbox,'POST',{items:[row('production-token-denied')]},'synthetic-ingest',null)).statusCode,401);
+    assert.equal((await call(inbox,'GET',null,previewToken)).body.items.length,0);
+    const result=await call(sync,'PUT',{rev:0,data:budget()},previewToken); assert.equal(result.statusCode,200);
     assert.ok(documents.has('previews/synthetic-preview.vercel.app/family-budget.json'));
     assert.ok(!documents.has('family-budget.json'));
-  } finally {delete process.env.VERCEL_ENV;delete process.env.VERCEL_URL;delete process.env.NINOCHKA_INBOX_INITIAL_BATCH;}
+  } finally {delete process.env.VERCEL_ENV;delete process.env.VERCEL_URL;delete process.env.NINOCHKA_INBOX_INITIAL_BATCH;delete process.env.NINOCHKA_PREVIEW_SESSION_SECRET;}
+});
+
+test('signed manual corrections round trip without rejecting the existing budget',async()=>{
+  documents.clear();
+  const data=budget();
+  data.months[0].weeks[0].expenses.push({amount:-500,currency:'EUR',rate:1,name:'Synthetic refund'});
+  assert.equal((await call(sync,'PUT',{rev:0,data})).statusCode,200);
+  assert.equal((await call(sync,'GET')).body.data.months[0].weeks[0].expenses[0].amount,-500);
+  data.months[0].weeks[0].fund.amount=-1;
+  assert.equal((await call(sync,'PUT',{rev:1,data})).statusCode,400,'fund allocations remain nonnegative');
 });
