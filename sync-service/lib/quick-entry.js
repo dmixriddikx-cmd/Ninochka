@@ -27,20 +27,28 @@ export function applyQuickExpense(data, actor, payload) {
   const id = String(payload?.id || '');
   if (!/^[A-Za-z0-9_-]{8,80}$/.test(id)) throw new QuickError('invalid_id');
   const importId = 'quick:' + actor + ':' + id;
-  if (data.months.some(m => m.weeks?.some(w => w.expenses?.some(x => x.importId === importId))))
-    return { duplicate: true, data, importId };
-
   const date = String(payload?.date || '');
   const weekId = quickWeek(date);
   const minor = parseMinor(payload?.amount);
+  if (data.months.some(m => m.weeks?.some(w => w.expenses?.some(x => x.importId === importId))))
+    return { duplicate: true, data, importId };
   const currency = payload?.currency || data.storage.currency;
   if (!CURRENCIES.has(currency)) throw new QuickError('invalid_currency');
   const targetCurrency = data.storage.currency;
   const rate = currency === targetCurrency ? 1 : Number(data.rates?.[currency + '_' + targetCurrency]?.value);
   if (!(rate > 0) || !Number.isFinite(rate)) throw new QuickError('missing_rate', 409);
   const monthId = date.slice(0,7);
-  const month = data.months.find(x => x.id === monthId);
-  if (!month) throw new QuickError('month_not_initialized', 409);
+  let month = data.months.find(x => x.id === monthId);
+  if (!month) {
+    // A shortcut may be used before VNN has been opened in a new month.
+    // Never invent a weekly allowance: create a zero-allocation month for review.
+    const weeks = [1, 2, 3, 4].map(id => ({ id, status: 'open',
+      fund: { amount: 0, currency: targetCurrency, rate: 1 },
+      expenses: [], settlement: 0, closedAt: null }));
+    month = { id: monthId, status: 'active', obligations: [], weeks,
+      createdAt: new Date().toISOString() };
+    data.months.push(month);
+  }
   const week = month.weeks?.find(x => x.id === weekId);
   if (!week) throw new QuickError('week_not_initialized', 409);
 
