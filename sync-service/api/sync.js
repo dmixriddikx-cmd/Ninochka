@@ -4,8 +4,8 @@ import { readDocument, replaceDocument, storagePath, WriteConflict, retryableSto
 import { applyQuickExpense, QuickError } from '../lib/quick-entry.js';
 import { signedActor, sessionSecret } from '../lib/token-auth.js';
 import { browserOrigin } from '../lib/browser-origin.js';
+import { BUDGET_PATH as DATA_PATH, historyPath } from '../lib/data-generation.js';
 
-const DATA_PATH = 'family-budget.json';
 const MAX_BYTES = 1024 * 1024;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const QUICK_TTL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -99,7 +99,7 @@ async function readBudget() { return (await readBudgetSnapshot()).data; }
 async function commitBudget(snapshot, actor, data) {
   const current = snapshot.data;
   if (current.data) {
-    await put(storagePath(`history/${Date.now()}-${current.rev}-${actor}-${randomUUID()}.json`),
+    await put(storagePath(historyPath(`${Date.now()}-${current.rev}-${actor}-${randomUUID()}.json`)),
       JSON.stringify({ ...current, archivedAt: new Date().toISOString(), archivedBy: actor }),
       { access: 'private', addRandomSuffix: false, contentType: 'application/json' });
   }

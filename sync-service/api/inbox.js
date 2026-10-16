@@ -3,9 +3,9 @@ import { signedActor as actor } from '../lib/token-auth.js';
 import { readDocument, replaceDocument, retryableStorageError, storageRetry } from '../lib/blob-store.js';
 import { excludeUnsuccessful } from '../lib/transaction-status.js';
 import { browserOrigin } from '../lib/browser-origin.js';
+import { BUDGET_PATH, INBOX_PATH as PATH } from '../lib/data-generation.js';
 
 // Independent staging queue; never changes the family budget.
-const PATH = 'family-expense-inbox.json';
 const LIMIT = 200;
 const CURRENCIES = new Set(['EUR', 'USD', 'MDL', 'UAH']);
 const CATEGORIES = new Set(['products', 'transport', 'clothes', 'leisure', 'other', 'household', 'health', 'gifts']);
@@ -133,7 +133,7 @@ export default async function handler(req, res) {
       }
       const chosen = new Set(ids);
       // Acknowledgement must never hide purchases that did not reach the budget.
-      const saved = (await readDocument('family-budget.json')).data?.data;
+      const saved = (await readDocument(BUDGET_PATH)).data?.data;
       const recorded = new Set((saved?.months || []).flatMap(month =>
         (month.weeks || []).flatMap(week => (week.expenses || []).map(row => row.importId))));
       if (ids.some(id => !recorded.has(id))) return reply(res, 409, { error: 'expenses_not_confirmed' });

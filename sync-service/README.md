@@ -26,7 +26,9 @@ The 90-day token itself is reusable until expiry; it is not a one-time token.
 
 ## Writes and recovery
 
-Each budget and inbox read bypasses Blob caching and captures its ETag. Replacing
+Active production data is stored below `generation-2/`. Retained immutable legacy
+deployments keep using the original root objects, so their writes cannot overwrite
+the active generation. Each budget and inbox read bypasses Blob caching and captures its ETag. Replacing
 an existing document requires `ifMatch`; first creation forbids overwrite. A
 stale budget revision returns 409. Quick Add and staging recompute on a conflict.
 There are no lease locks to expire or delete. Historical budget snapshots remain
@@ -34,13 +36,13 @@ available; never delete live documents to recover from a conflict.
 
 The pinned Blob SDK supports conditional writes. The synthetic tests model that
 contract; they are not proof of deployed provider behavior. Verify an isolated
-preview before release. Do not run old and new writers against the same store:
-old deployments lack ETag fencing. Retain production as rollback evidence, but
-coordinate writer cutover and client reload before any approved release.
+preview before release. Legacy and generation-2 writers may coexist only because
+they target different objects. Retain production as rollback evidence and still
+coordinate client reload before any approved release.
 
 Every Vercel Preview automatically stores documents and history under
-`previews/<VERCEL_URL>/`. Missing deployment identity fails closed. Production
-paths stay unchanged. Preview tests must use synthetic records exclusively;
+`previews/<VERCEL_URL>/generation-2/`. Missing deployment identity fails closed.
+Preview tests must use synthetic records exclusively;
 private batch seeding is disabled there. Preview credentials are required to be separate
 from production credentials.
 

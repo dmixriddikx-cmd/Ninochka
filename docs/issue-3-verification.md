@@ -175,7 +175,17 @@ plus 5,667 tokens per high-detail tile, per the official images guide. Typical
 per screenshot (four screenshots roughly USD 0.016–0.048); actual usage varies.
 No API billing was activated and no paid recognition request was made.
 
-Next dependency: provision a valid existing family-session bearer token through
-this cloud environment's protected `VNN_FAMILY_SESSION_TOKEN` Secret. No PIN/key
-should be posted in chat or GitHub. This unlocks private capture, not automatic
-financial imports or an unverified production release.
+The release continuation obtained a stable, read-only production Blob capture
+through a one-time private route. The route returned only RSA-wrapped AES-GCM
+ciphertext; its token was destroyed after use. The private backup passed schema,
+hash, decrypt and exact round-trip restore checks outside Git. The empty local
+iPhone export was not used and no production write occurred during capture.
+
+The current release candidate now uses `generation-2/` budget, inbox and history
+objects. This is the provider-independent writer barrier: retained immutable
+legacy deployments can only write the original root objects and therefore cannot
+corrupt the active generation. Unit coverage explicitly mutates the legacy object
+after a generation-2 save and proves the current API still returns the unaffected
+generation-2 data. Cutover must copy the verified legacy snapshot only when the
+generation-2 destination is absent, verify an exact readback, and preserve both
+the original object and encrypted backup for rollback.
