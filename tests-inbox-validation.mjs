@@ -26,7 +26,7 @@ const dateStart = browserSource.indexOf('function inboxResolvedDate(');
 const dateEnd = browserSource.indexOf('async function applyExpenseInbox(', dateStart);
 assert.ok(dateStart >= 0 && dateEnd > dateStart, 'Date resolver must exist in the browser importer');
 const { inboxResolvedDate } = vm.runInNewContext(browserSource.slice(dateStart,dateEnd) +
-  '\\n({ inboxResolvedDate })'.replace('\\n','\n'), {});
+  '\n({ inboxResolvedDate })', {});
 const row = {id:'bank_row_42', date:'2026-10-14'};
 assert.equal(inboxResolvedDate(row,new Map()),'2026-10-14', 'Unedited date keeps original');
 assert.equal(inboxResolvedDate(row,new Map([['bank_row_42','2026-10-15']])),'2026-10-15',
