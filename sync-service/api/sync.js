@@ -1,11 +1,13 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { del, get, put } from '@vercel/blob';
+import { applyQuickExpense, QuickError } from '../lib/quick-entry.js';
 
 const ORIGIN = 'https://dmixriddikx-cmd.github.io';
 const DATA_PATH = 'family-budget.json';
 const LOCK_PATH = 'family-budget.lock';
 const MAX_BYTES = 1024 * 1024;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const QUICK_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 function validBudget(data) {
   return data?.schemaVersion === 4 && Array.isArray(data.months) &&
@@ -65,11 +67,44 @@ function actorFromSession(req) {
   if (actualBuf.length !== expectedBuf.length || !timingSafeEqual(actualBuf, expectedBuf)) return null;
   try {
     const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    if (!['nina', 'volodymyr'].includes(parsed.actor) || Number(parsed.expiresAt) <= Date.now()) return null;
+    if (!['nina', 'volodymyr'].includes(parsed.actor) ||
+        (parsed.purpose && parsed.purpose !== 'session') ||
+        Number(parsed.expiresAt) <= Date.now()) return null;
     return parsed.actor;
   } catch {
     return null;
   }
+}
+
+// Shortcuts get an individually issued, restricted token: it cannot read the family
+// budget, change settings, or authenticate as a normal VNN web session.
+function issueQuickToken(actor) {
+  const expiresAt = Date.now() + QUICK_TTL_MS;
+  const payload = Buffer.from(JSON.stringify({
+    purpose: 'quick-expense', actor, expiresAt, nonce: randomUUID()
+  })).toString('base64url');
+  const signature = createHmac('sha256', process.env.NINOCHKA_SESSION_SECRET)
+    .update(payload).digest('base64url');
+  return { token: payload + '.' + signature, expiresAt };
+}
+
+function actorFromQuickToken(req) {
+  const match = /^Bearer\\s+([A-Za-z0-9._-]+)$/.exec(req.headers.authorization || '');
+  const secret = process.env.NINOCHKA_SESSION_SECRET;
+  if (!match || !secret) return null;
+  const parts = match[1].split('.');
+  if (parts.length !== 2) return null;
+  const expected = createHmac('sha256', secret).update(parts[0]).digest('base64url');
+  const givenBytes = Buffer.from(parts[1]);
+  const expectedBytes = Buffer.from(expected);
+  if (givenBytes.length !== expectedBytes.length ||
+      !timingSafeEqual(givenBytes, expectedBytes)) return null;
+  try {
+    const claim = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
+    if (claim.purpose !== 'quick-expense' || !['nina', 'volodymyr'].includes(claim.actor) ||
+        !Number.isFinite(claim.expiresAt) || claim.expiresAt <= Date.now()) return null;
+    return claim.actor;
+  } catch { return null; }
 }
 
 async function streamText(stream) {
@@ -160,22 +195,77 @@ async function writeBudget(actor, expectedRev, data) {
   }
 }
 
+async function writeQuickBudget(actor, payload) {
+  const lockId = await acquireLock();
+  if (!lockId) return { busy: true };
+  try {
+    const current = await readBudget();
+    if (!current.data) throw new QuickError('budget_not_initialized', 409);
+    const draft = structuredClone(current.data);
+    const result = applyQuickExpense(draft, actor, payload);
+    if (result.duplicate) return { duplicate: true, rev: current.rev };
+    const json = JSON.stringify(draft);
+    if (Buffer.byteLength(json) > MAX_BYTES) throw new QuickError('budget_too_large', 409);
+    await put(
+      `history/${Date.now()}-${current.rev}-${actor}-${randomUUID()}.json`,
+      JSON.stringify({ ...current, archivedAt: new Date().toISOString(), archivedBy: actor }),
+      { access: 'private', addRandomSuffix: false, contentType: 'application/json' }
+    );
+    const next = { rev: current.rev + 1, data: draft,
+      updatedAt: new Date().toISOString(), updatedBy: actor };
+    await put(DATA_PATH, JSON.stringify(next), {
+      access: 'private', addRandomSuffix: false, allowOverwrite: true,
+      contentType: 'application/json'
+    });
+    return { duplicate: false, rev: next.rev, monthId: result.monthId,
+      weekId: result.weekId, currency: result.row.currency, amountMinor: result.row.amount };
+  } finally {
+    await releaseLock();
+  }
+}
+
 export default async function handler(req, res) {
   const origin = req.headers.origin;
-  if (origin !== ORIGIN) return send(res, 403, { error: 'origin_denied' });
-  res.setHeader('Access-Control-Allow-Origin', ORIGIN);
-  res.setHeader('Vary', 'Origin');
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, OPTIONS');
+  const action = req.body?.action;
+  // An iOS Shortcut sends no Origin header; accept only a signed, quick-add POST.
+  // All other endpoints retain the existing same-origin browser restriction.
+  const shortcutCall = !origin && req.method === 'POST' && action === 'quick-add';
+  if (origin !== ORIGIN && !shortcutCall) return send(res, 403, { error: 'origin_denied' });
+  if (origin === ORIGIN) {
+    res.setHeader('Access-Control-Allow-Origin', ORIGIN);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, OPTIONS');
+  }
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   if (req.method === 'POST') {
-    const { action, login, pin } = req.body || {};
-    if (action !== 'login') return send(res, 400, { error: 'invalid_action' });
-    const actor = actorFromCredentials(login, pin);
-    if (!actor) return send(res, 401, { error: 'invalid_credentials' });
-    const session = signSession(actor);
-    return send(res, 200, { actor, token: session.token, expiresAt: session.expiresAt });
+    if (action === 'login') {
+      const actor = actorFromCredentials(req.body?.login, req.body?.pin);
+      if (!actor) return send(res, 401, { error: 'invalid_credentials' });
+      const session = signSession(actor);
+      return send(res, 200, { actor, token: session.token, expiresAt: session.expiresAt });
+    }
+    if (action === 'quick-token') {
+      const actor = actorFromSession(req);
+      if (!actor) return send(res, 401, { error: 'invalid_session' });
+      return send(res, 200, issueQuickToken(actor));
+    }
+    if (action === 'quick-add') {
+      const actor = actorFromQuickToken(req);
+      if (!actor) return send(res, 401, { error: 'invalid_quick_token' });
+      try {
+        const result = await writeQuickBudget(actor, req.body);
+        if (result.busy) return send(res, 503, { error: 'sync_busy' });
+        return send(res, 200, { saved: true, ...result });
+      } catch (error) {
+        if (error instanceof QuickError)
+          return send(res, error.status, { error: error.message });
+        console.error('Quick expense unavailable:', error?.message || error);
+        return send(res, 503, { error: 'quick_unavailable' });
+      }
+    }
+    return send(res, 400, { error: 'invalid_action' });
   }
 
   if (!['GET', 'PUT'].includes(req.method)) return send(res, 405, { error: 'method_not_allowed' });
