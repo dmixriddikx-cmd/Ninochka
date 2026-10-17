@@ -88,11 +88,11 @@ test('concurrent first creates and updates have one winner and preserve revision
 });
 
 test('stale snapshot cannot overwrite a newer document, including after arbitrary delay',async()=>{
-  const old=await readDocument('generation-2/family-budget.json');
+  const old=await readDocument('generation-3/family-budget.json');
   const current={...old.data,rev:old.data.rev+1};
-  await replaceDocument('generation-2/family-budget.json',old,current);
-  await assert.rejects(replaceDocument('generation-2/family-budget.json',old,{...old.data,rev:999}),WriteConflict);
-  assert.equal((await readDocument('generation-2/family-budget.json')).data.rev,current.rev);
+  await replaceDocument('generation-3/family-budget.json',old,current);
+  await assert.rejects(replaceDocument('generation-3/family-budget.json',old,{...old.data,rev:999}),WriteConflict);
+  assert.equal((await readDocument('generation-3/family-budget.json')).data.rev,current.rev);
 });
 
 test('legacy immutable deployments are isolated from generation 2 family data',async()=>{
@@ -142,7 +142,7 @@ test('inbox concurrent stage, replay, filtering, acknowledgement and readback',a
   assert.equal(filtered.body.accepted,0);
   assert.equal(filtered.body.skippedDeclined,2); assert.equal(filtered.body.skippedUnsettled,2);
   assert.equal((await call(inbox,'POST',{items:[{...row('invalid-1'),date:'2026-02-30'}]},ingest,null)).statusCode,400);
-  assert.ok(!documents.has('generation-2/family-budget.json'),'staging never debits budget');
+  assert.ok(!documents.has('generation-3/family-budget.json'),'staging never debits budget');
   assert.equal((await call(inbox,'PATCH',{ids:['synthetic-1']})).statusCode,409,'Unconfirmed purchases cannot disappear');
   const confirmed=budget();
   confirmed.months[0].weeks[1].expenses.push({...row('synthetic-1'),importId:'synthetic-1',rate:1});
@@ -154,10 +154,10 @@ test('inbox concurrent stage, replay, filtering, acknowledgement and readback',a
 });
 
 test('preview paths and historical seeds cannot touch family documents',async()=>{
-  const productionBefore=structuredClone(documents.get('generation-2/family-budget.json'));
+  const productionBefore=structuredClone(documents.get('generation-3/family-budget.json'));
   const productionToken=token();
   process.env.VERCEL_ENV='preview'; delete process.env.VERCEL_URL;
-  assert.throws(()=>storagePath('generation-2/family-budget.json'),/preview_storage_not_isolated/);
+  assert.throws(()=>storagePath('generation-3/family-budget.json'),/preview_storage_not_isolated/);
   process.env.VERCEL_URL='synthetic-preview.vercel.app';
   process.env.NINOCHKA_PREVIEW_SESSION_SECRET='separate-synthetic-preview-secret';
   const payload=Buffer.from(JSON.stringify({actor:'nina',expiresAt:Date.now()+3600000})).toString('base64url');
@@ -168,8 +168,8 @@ test('preview paths and historical seeds cannot touch family documents',async()=
     assert.equal((await call(inbox,'POST',{items:[row('production-token-denied')]},'synthetic-ingest',null)).statusCode,401);
     assert.equal((await call(inbox,'GET',null,previewToken)).body.items.length,0);
     const result=await call(sync,'PUT',{rev:0,data:budget()},previewToken); assert.equal(result.statusCode,200);
-    assert.ok(documents.has('previews/synthetic-preview.vercel.app/generation-2/family-budget.json'));
-    assert.deepEqual(documents.get('generation-2/family-budget.json'),productionBefore,'Production document remains byte-for-byte unchanged');
+    assert.ok(documents.has('previews/synthetic-preview.vercel.app/generation-3/family-budget.json'));
+    assert.deepEqual(documents.get('generation-3/family-budget.json'),productionBefore,'Production document remains byte-for-byte unchanged');
   } finally {delete process.env.VERCEL_ENV;delete process.env.VERCEL_URL;delete process.env.NINOCHKA_INBOX_INITIAL_BATCH;delete process.env.NINOCHKA_PREVIEW_SESSION_SECRET;}
 });
 
