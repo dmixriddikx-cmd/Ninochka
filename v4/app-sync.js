@@ -1,10 +1,10 @@
 // Shared family budget. Local data stays as the recovery copy; the Vercel store is authoritative after activation.
 const SYNC_API = String(globalThis.NINOCHKA_SYNC_API || '').replace(/\/$/, '');
-const SYNC_TOKEN = 'ninochka-sync-token';
-const SYNC_LOGIN = 'ninochka-sync-login';
-const SYNC_REV = 'ninochka-sync-rev';
-const SYNC_READY = 'ninochka-sync-ready';
-const SYNC_DIRTY = 'ninochka-sync-dirty';
+const SYNC_TOKEN = 'vnn-next-sync-token';
+const SYNC_LOGIN = 'vnn-next-sync-login';
+const SYNC_REV = 'vnn-next-sync-rev';
+const SYNC_READY = 'vnn-next-sync-ready';
+const SYNC_DIRTY = 'vnn-next-sync-dirty';
 const sync = {
   token: localStorage.getItem(SYNC_TOKEN) || '',
   login: localStorage.getItem(SYNC_LOGIN) || '',
@@ -278,7 +278,7 @@ function backupLocal(content = localStorage.getItem(STORE)) {
   const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `ninochka-local-${new Date().toISOString().slice(0,10)}.json`;
+  link.download = `vnn-next-local-${new Date().toISOString().slice(0,10)}.json`;
   document.body.append(link);
   link.click();
   link.remove();
@@ -335,7 +335,7 @@ async function resetTestData(skipConfirmation = false) {
   }
 
   const before = localStorage.getItem(STORE) || '';
-  localStorage.setItem(`ninochka-before-reset-${Date.now()}`, before);
+  localStorage.setItem(`vnn-next-before-reset-${Date.now()}`, before);
 
   state = zeroBudget();
   view.week = 1;
@@ -398,7 +398,7 @@ async function resetTestData(skipConfirmation = false) {
 function clearSyncSession(message = '') {
   sync.token = '';
   if (sync.dirty) {
-    localStorage.setItem(`ninochka-unsent-${Date.now()}`, localStorage.getItem(STORE) || '');
+    localStorage.setItem(`vnn-next-unsent-${Date.now()}`, localStorage.getItem(STORE) || '');
   } else {
     sync.rev = null;
     localStorage.removeItem(SYNC_REV);
@@ -439,7 +439,7 @@ async function connectSync(login = '', pin = '', restoring = false, authenticate
     localStorage.setItem(SYNC_REV, String(sync.rev ?? 0));
     state.preferences.actor = sync.actor;
 
-    if (!restoring && !localStorage.getItem(`ninochka-onboarding-${sync.actor}`)) {
+    if (!restoring && !localStorage.getItem(`vnn-next-onboarding-${sync.actor}`)) {
       state.preferences.onboardingSeen = false;
     }
 
@@ -475,8 +475,8 @@ async function connectSync(login = '', pin = '', restoring = false, authenticate
 
 function activateSync() {
   if (!sync.staged) return;
-  if (!localStorage.getItem('ninochka-before-shared')) {
-    localStorage.setItem('ninochka-before-shared', localStorage.getItem(STORE) || '');
+  if (!localStorage.getItem('vnn-next-before-shared')) {
+    localStorage.setItem('vnn-next-before-shared', localStorage.getItem(STORE) || '');
   }
 
   localStorage.setItem(SYNC_TOKEN, sync.token);
@@ -611,7 +611,7 @@ document.addEventListener('click', event => {
   }
   if (action === 'use-remote') {
     if (!confirm('Местные изменения ещё не попали в общий бюджет. Скачай копию перед переходом. Открыть общую версию?')) return;
-    localStorage.setItem(`ninochka-conflict-${Date.now()}`, localStorage.getItem(STORE) || '');
+    localStorage.setItem(`vnn-next-conflict-${Date.now()}`, localStorage.getItem(STORE) || '');
     backupLocal();
     sync.paused = false;
     sync.dirty = false;
@@ -692,7 +692,7 @@ document.addEventListener('click', event => {
 
 document.addEventListener('click', event => {
   const onboard = event.target.closest('[data-onboard="done"]');
-  if (onboard && sync.actor) localStorage.setItem(`ninochka-onboarding-${sync.actor}`, '1');
+  if (onboard && sync.actor) localStorage.setItem(`vnn-next-onboarding-${sync.actor}`, '1');
 }, true);
 
 if (SYNC_API && sync.token && localStorage.getItem(SYNC_READY) === '1') {
