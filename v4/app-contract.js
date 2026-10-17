@@ -26,7 +26,8 @@ function resolvedDarkFinal(){
 }
 function activeWeekFinal(){
   const mm=m();
-  return mm.weeks.find(x=>x.id===view.week)||mm.weeks.find(x=>x.status!=='closed')||mm.weeks.at(-1);
+  // Home/list show the calendar week, not the last historical week viewed.
+  return mm.weeks.find(x=>x.id===currentWeekIndex())||mm.weeks.at(-1);
 }
 function progressFinal(spent,fund){
   const raw=fund>0?(spent/fund)*100:0,bar=Math.max(0,Math.min(100,raw));
@@ -34,7 +35,7 @@ function progressFinal(spent,fund){
 }
 function moneyPlain(minor,currency=state.storage.currency){return fmt(Number(minor)||0,currency)}
 function weekDatesFinal(weekId){
-  const [year,month]=m().id.split('-').map(Number),start=1+(Number(weekId)-1)*7,last=new Date(year,month,0).getDate(),end=Math.min(last,start+6);
+  const [year,month]=m().id.split('-').map(Number),start=1+(Number(weekId)-1)*7,last=new Date(year,month,0).getDate(),end=Number(weekId)===4?last:Math.min(last,start+6);
   const monthName=new Intl.DateTimeFormat(lang()==='uk'?'uk-UA':'ru-RU',{month:'long'}).format(new Date(year,month-1,1));
   return `${start}–${end} ${monthName} ${year}`;
 }
@@ -159,7 +160,7 @@ document.addEventListener('click',e=>{
   if(!action)return;
   e.preventDefault();e.stopImmediatePropagation();
   if(action.dataset.finalAction==='back-home'){view.tab='home';view.weekMode='detail';render();return}
-  if(action.dataset.finalAction==='open-week'){view.tab='week';view.week=firstOpenWeekId();view.weekMode='detail';render();return}
+  if(action.dataset.finalAction==='open-week'){view.tab='week';view.week=activeWeekFinal().id;view.weekMode='detail';render();return}
   if(action.dataset.finalAction==='week-list'){view.weekMode='list';render();return}
   if(action.dataset.finalAction==='storage-add'){storageAdjustmentModal('add');return}
   if(action.dataset.finalAction==='storage-sub'){storageAdjustmentModal('sub');return}
