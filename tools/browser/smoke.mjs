@@ -41,7 +41,7 @@ try{
     await page.locator('[data-sync-pin]').fill('synthetic-pin');
     await page.locator('[data-auth-form]').evaluate(form=>form.requestSubmit());
     await page.locator('.ct-app').waitFor();
-    await page.evaluate(()=>{localStorage.setItem('ninochka-onboarding-nina','1');localStorage.setItem('ninochka-onboarding-volodymyr','1');__vnnTest.state.preferences.onboardingSeen=true;__vnnTest.render();document.querySelector('.onboarding')?.remove();});
+    await page.evaluate(()=>{localStorage.setItem('vnn-next-onboarding-nina','1');localStorage.setItem('vnn-next-onboarding-volodymyr','1');__vnnTest.state.preferences.onboardingSeen=true;__vnnTest.render();document.querySelector('.onboarding')?.remove();});
     return page;
   }
   const nina=await device('Нина');
