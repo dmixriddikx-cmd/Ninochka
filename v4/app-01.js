@@ -18,7 +18,7 @@ function setDoc(){
   document.documentElement.lang=lang(); document.documentElement.setAttribute('translate','no');
   const pref=state.preferences.theme, dark=pref==='dark'||(pref==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches);
   document.documentElement.dataset.theme=dark?'dark':'light'; document.title=`Ninochka — ${tr('title')}`;
-  document.querySelector('meta[name=theme-color]')?.setAttribute('content',dark?'#17161c':'#fff7f1');
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content',dark?'#12141a':'#f6f3f1');
 }
 function progressInfo(spent,fund){const raw=fund>0?(spent/fund)*100:0;return{used:Math.max(0,Math.min(100,raw)),raw:Math.max(0,raw),left:Math.max(0,100-raw)}}
 function progressHTML(spent,fund){const p=progressInfo(spent,fund),over=p.raw>100,hue=Math.round(120*(1-p.used/100));return `<div class="week-progress ${over?'over':''}" style="--budget-hue:${hue}"><div class="progress-track"><i style="width:${p.used.toFixed(1)}%"></i></div><div class="progress-meta"><span>${Math.round(p.raw)}% ${tr('spent').toLowerCase()}</span><b>${Math.round(p.left)}% ${tr('remainingPercent').toLowerCase()}</b></div></div>`}

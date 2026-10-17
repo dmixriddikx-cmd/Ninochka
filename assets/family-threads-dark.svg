@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" fill="none">
+  <defs>
+    <filter id="nodeGlow" x="-300%" y="-300%" width="700%" height="700%"><feGaussianBlur stdDeviation="5"/></filter>
+    <linearGradient id="threadGrad" x1="0" x2="1"><stop stop-color="#697F9D" stop-opacity="0"/><stop offset=".35" stop-color="#A59AD1" stop-opacity=".30"/><stop offset=".69" stop-color="#697F9D" stop-opacity=".42"/><stop offset="1" stop-color="#A59AD1" stop-opacity="0"/></linearGradient>
+  </defs>
+  <path d="M-25 270C70 190 110 305 212 174S352 142 440 61 638 98 758-10" stroke="url(#threadGrad)" stroke-width=".9" stroke-linecap="round"/>
+  <circle cx="212" cy="174" r="8.5" fill="#C6BDE2" opacity=".26" filter="url(#nodeGlow)"/><circle cx="212" cy="174" r="1.7" fill="#C6BDE2" opacity=".8"/>
+  <circle cx="440" cy="61" r="11.5" fill="#C6BDE2" opacity=".26" filter="url(#nodeGlow)"/><circle cx="440" cy="61" r="2.3" fill="#C6BDE2" opacity=".8"/>
+  <circle cx="612" cy="55" r="7" fill="#C6BDE2" opacity=".26" filter="url(#nodeGlow)"/><circle cx="612" cy="55" r="1.4" fill="#C6BDE2" opacity=".8"/>
+  <path d="M12-20C110 84 205 32 282 155S467 182 594 245 728 209 785 295" stroke="url(#threadGrad)" stroke-width=".6" stroke-linecap="round"/>
+  <circle cx="282" cy="155" r="7" fill="#C6BDE2" opacity=".26" filter="url(#nodeGlow)"/><circle cx="282" cy="155" r="1.4" fill="#C6BDE2" opacity=".8"/>
+  <circle cx="594" cy="245" r="10.5" fill="#C6BDE2" opacity=".26" filter="url(#nodeGlow)"/><circle cx="594" cy="245" r="2.1" fill="#C6BDE2" opacity=".8"/>
+  <path d="M-30 140C130 75 245 190 348 122S508 40 795 180" stroke="url(#threadGrad)" stroke-width=".9" stroke-linecap="round"/>
+  <circle cx="348" cy="122" r="12.5" fill="#C6BDE2" opacity=".26" filter="url(#nodeGlow)"/><circle cx="348" cy="122" r="2.5" fill="#C6BDE2" opacity=".8"/>
+  <circle cx="650" cy="118" r="7" fill="#C6BDE2" opacity=".26" filter="url(#nodeGlow)"/><circle cx="650" cy="118" r="1.4" fill="#C6BDE2" opacity=".8"/>
+</svg>

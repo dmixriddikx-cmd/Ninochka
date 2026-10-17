@@ -56,6 +56,7 @@ function contractThemeButton(value,icon,label){return `<button class="ct-theme-c
 function contractSecondaryBalance(){return secondaryBalanceFinal()}
 function contractActor(){return state.preferences.actor==='volodymyr'?'volodymyr':'nina'}
 function contractActorName(id=contractActor()){return id==='volodymyr'?'Вова':'Нина'}
+function contractWelcome(){const name=contractActor()==='nina'?'Ниночка':'Вова';return `${lang()==='uk'?'Привіт':'Привет'}, ${name}`}
 function contractCurrencyFlag(currency){return ({MDL:'🇲🇩',EUR:'🇪🇺',USD:'🇺🇸',UAH:'🇺🇦'})[currency]||''}
 
 function contractNav(){const items=[['home','⌂','home'],['week','▤','expensesTab'],['plan','▦','plan'],['storage','▣','storageTab'],['more','•••','more']];return `<nav class="ct-nav">${items.map(([id,ico,key])=>`<button class="ct-nav-item ${view.tab===id?'active':''}" data-tab="${id}"><b>${ico}</b><span>${tr(key)}</span></button>`).join('')}</nav>`}
@@ -69,7 +70,8 @@ function contractQuickCategories(){const cats=['products','household','transport
 function contractWeekCard(ww){const spent=safe(()=>core.weekSpent(state,ww),0),fund=safe(()=>core.fundInStorage(state,ww),0),left=fund-spent,p=progressFinal(spent,fund);return `<button class="ct-week-card" data-final-action="open-week"><div class="ct-week-card-head"><div><small>${tr('currentWeek')}</small><h2>${tr('weekN')} ${ww.id}</h2><em>${weekDatesFinal(ww.id)}</em></div><span>›</span></div><div class="ct-week-pair"><div><small>${tr('weekFund')}</small><strong>${moneyPlain(ww.fund.amount,ww.fund.currency)}</strong></div><div><small>${left<0?tr('overspend'):tr('left')}</small><strong class="${left<0?'negative':'positive'}">${moneyPlain(Math.abs(left))}</strong></div></div><div class="ct-progress" style="--budget-hue:${p.hue}"><i style="width:${p.bar}%"></i></div><div class="ct-progress-copy"><span>${tr('spent')} <b>${moneyPlain(spent)}</b></span><span>${Math.round(p.left)}% ${tr('remainingPercent').toLowerCase()}</span></div></button>`}
 
 function contractHome(){const ww=activeWeekFinal(),sec=contractSecondaryBalance();return `${contractTop('home')}
-<section class="ct-home-hero ${resolvedDarkFinal()?'dark':'light'}"><div class="ct-home-hero-copy"><h1>${contractActor()==='nina'?tr('directHero'):'Мы рядом, всё под контролем ♥'}</h1><p>${contractActor()==='nina'?tr('directHeroCopy'):'Наши деньги и планы — в одном месте. Я тоже всё записываю.'}</p></div></section>
+<section class="ct-home-hero ${resolvedDarkFinal()?'dark':'light'}"><div class="ct-home-hero-copy"><h1 class="ct-home-mark" aria-label="VNN">VNN</h1><p>${lang()==='uk'?'Сімейний бюджет':'Семейный бюджет'}</p></div></section>
+<div class="ct-home-welcome"><span>${contractWelcome()}</span><i aria-hidden="true">♡</i></div>
 <section class="ct-balance-card"><div><small>${tr('balance')}</small><strong>${moneyPlain(state.storage.balance)}</strong></div><label class="ct-balance-currency" aria-label="${tr('storageCurrencyShort')}"><span class="ct-balance-flag" aria-hidden="true">${contractCurrencyFlag(state.storage.currency)}</span><select data-action="storage-currency" aria-label="${tr('storageCurrencyShort')}">${core.CURRENCIES.map(c=>`<option value="${c}" ${c===state.storage.currency?'selected':''}>${contractCurrencyFlag(c)}</option>`).join('')}</select></label><button class="ct-primary" data-final-action="storage-add">＋ ${tr('topUp')}</button></section>
 ${contractQuickCategories()}${contractWeekCard(ww)}
 <div class="ct-home-actions"><button class="ct-primary" data-action="expense-add">＋ ${tr('addExpense')}</button><button class="ct-soft" data-tab="plan">▦ ${tr('plan')}</button></div>`}
@@ -146,7 +148,7 @@ function quickExpenseModal(category){
   showModal(tr('addExpense'),`${field('name',tr('name'),tr(category),'placeholder="'+tr('restaurant')+'"')}${field('subcategory',lang()==='uk'?'Підкатегорія (необов’язково)':'Подкатегория (необязательно)','','maxlength="120"')}${field('amount',tr('amount'),'','inputmode="decimal" placeholder="0.00"')}${currencySelect('currency',state.storage.currency)}<input type="hidden" name="category" value="${category}"><div class="modal-actions"><button class="btn primary" data-action="expense-save">${tr('save')}</button></div>`);
 }
 
-render=function(){setDoc();let body='';if(view.tab==='home')body=contractHome();else if(view.tab==='week')body=view.weekMode==='list'?contractWeekList():contractWeek();else if(view.tab==='plan')body=contractPlan();else if(view.tab==='storage')body=contractStorage();else body=contractMore();app.innerHTML=`<div class="app ct-app">${globalThis.NinochkaSync?.banner?.()||''}${body}</div>${contractNav()}`;if(!state.preferences.onboardingSeen)renderOnboardingFinal(Number.isInteger(view.onboardingStep)?view.onboardingStep:0)};
+render=function(){setDoc();let body='';if(view.tab==='home')body=contractHome();else if(view.tab==='week')body=view.weekMode==='list'?contractWeekList():contractWeek();else if(view.tab==='plan')body=contractPlan();else if(view.tab==='storage')body=contractStorage();else body=contractMore();app.innerHTML=`<div class="app ct-app ct-view-${view.tab}">${globalThis.NinochkaSync?.banner?.()||''}${body}</div>${contractNav()}`;if(!state.preferences.onboardingSeen)renderOnboardingFinal(Number.isInteger(view.onboardingStep)?view.onboardingStep:0)};
 
 document.addEventListener('click',e=>{
   const selected=e.target.closest('[data-week-select]');
