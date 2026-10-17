@@ -1,1 +1,7 @@
-// The NEW VNN uses only its own same-origin backend. Never connect to the old API.\n// GitHub Pages cannot host the API; sync stays disabled there until an isolated\n// backend/origin is available. This deliberately fails closed.\nconst host = globalThis.location?.hostname || '';\nglobalThis.NINOCHKA_SYNC_API = host && !host.endsWith('.github.io') &&\n  (host.endsWith('.vercel.app') || host === 'localhost' || host === '127.0.0.1')\n  ? globalThis.location.origin : '';\n
+// The NEW VNN uses only its own same-origin backend. Never connect to the old API.
+// GitHub Pages cannot host the API; sync stays disabled there until an isolated
+// backend/origin is available. This deliberately fails closed.
+const host = globalThis.location?.hostname || '';
+globalThis.NINOCHKA_SYNC_API = host && !host.endsWith('.github.io') &&
+  (host.endsWith('.vercel.app') || host === 'localhost' || host === '127.0.0.1')
+  ? globalThis.location.origin : '';
