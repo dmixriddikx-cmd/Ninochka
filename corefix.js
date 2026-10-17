@@ -30,6 +30,9 @@ export function changeStorageCurrency(state,newCurrency,rate){
       else if(item.rate)item.rate=base.round(item.rate*r);
     }
     for(const w of m.weeks){
+      // Settlement is denominated in Storage currency, unlike the original
+      // fund/expense amounts. Rebase it before future reopen/correction math.
+      w.settlement=Math.round(Number(w.settlement||0)*r);
       if(w.fund.currency===newCurrency)w.fund.rate=1;
       else if(w.fund.currency===old)w.fund.rate=r;
       else if(w.fund.rate)w.fund.rate=base.round(w.fund.rate*r);

@@ -23,7 +23,16 @@ if (/document\.addEventListener\('click',[\s\S]{0,700}\[data-action="expense-sav
 if (!/if\(action==='expense-save'\)[\s\S]{0,900}core\.addExpense/.test(app)) fail('expense save path must reach core.addExpense');
 if (!app.includes('<option value="${c}"')) fail('currency selector must preserve raw ISO currency codes as option values');
 if (!app.includes('view.onboardingStep=Number(i)||0')) fail('onboarding step must be tracked across rerenders');
-if (!app.includes("data-final-action=\"reset-budget\"")) fail('reset button must use direct app reset route');
-if (!app.includes("resetTestData(true)")) fail('confirmed reset must bypass native prompt flow');
+if (app.includes("data-final-action=\"reset-budget\"")) fail('production UI must not expose destructive budget reset');
+if (app.includes("resetTestData(true)")) fail('production UI must not bypass reset confirmation');
+if (!app.includes("['products','household','transport','clothes','leisure','health','gifts','other']")) fail('expense editor must include every active category');
+if (!app.includes("!categories.includes(item.category)")) fail('expense editor must preserve unknown legacy categories');
+if (!app.includes("field('subcategory'")) fail('expense editor must preserve an optional nested category');
+if (!app.includes('data-final-action="income-add"')) fail('income tab must create explicit income entries');
+if (!app.includes("function contractWelcome()")) fail('personalized Nina/Vova greeting must remain in the home flow');
+if (!app.includes('class="ct-home-mark"') || !app.includes('aria-label="VNN"')) fail('home cover must carry the VNN mark');
+if (app.includes('Сегодня всё под контролем')) fail('removed productivity slogan must not return');
+if (!css.includes('family-threads-dark.svg') || !css.includes('family-threads-light.svg')) fail('both theme thread assets must ship');
+if (/transport-test-burst-cleaned|accidental transport burst|ww\.expenses=ww\.expenses\.filter\(x=>!ids\.has/.test(app)) fail('runtime must never auto-delete similar transport expenses');
 
 console.log('UI contract checks PASS');

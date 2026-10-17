@@ -1,0 +1,32 @@
+{
+  "name": "VNN — новый семейный бюджет",
+  "short_name": "VNN",
+  "description": "Новый семейный бюджет Вовы и Нины — чистая установка",
+  "lang": "ru",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#17141f",
+  "theme_color": "#17141f",
+  "icons": [
+    {
+      "src": "./assets/vnn-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/vnn-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/vnn-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "id": "/vnn-next-2026"
+}
