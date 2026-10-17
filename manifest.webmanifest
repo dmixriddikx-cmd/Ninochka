@@ -1,7 +1,7 @@
 {
-  "name": "VNN — семейный бюджет",
+  "name": "VNN — новый семейный бюджет",
   "short_name": "VNN",
-  "description": "Семейный бюджет Вовы, Нины и Ники",
+  "description": "Новый семейный бюджет Вовы и Нины — чистая установка",
   "lang": "ru",
   "start_url": "./",
   "scope": "./",
@@ -27,5 +27,6 @@
       "type": "image/png",
       "purpose": "any"
     }
-  ]
+  ],
+  "id": "/vnn-next-2026"
 }
