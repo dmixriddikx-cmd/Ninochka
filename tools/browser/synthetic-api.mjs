@@ -26,7 +26,7 @@ delete process.env.VERCEL_ENV;
 const {replaceDocument}=await import('../../sync-service/lib/blob-store.js');
 const data=createState();data.preferences.onboardingSeen=true;
 for(const month of data.months)for(const week of month.weeks)week.fund={amount:0,currency:'EUR',rate:1};
-await replaceDocument('generation-2/family-budget.json',{etag:null},{rev:1,data,updatedAt:new Date().toISOString(),updatedBy:'nina'});
+await replaceDocument('generation-3/family-budget.json',{etag:null},{rev:1,data,updatedAt:new Date().toISOString(),updatedBy:'nina'});
 const {default:sync}=await import('../../sync-service/api/sync.js');
 const {default:inbox}=await import('../../sync-service/api/inbox.js');
 const {default:recognize}=await import('../../sync-service/api/recognize.js');
