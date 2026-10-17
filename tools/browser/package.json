@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node smoke.mjs && node offline.mjs && node passkeys.mjs",
+    "capture:visual": "node visual.mjs",
     "test:live": "node live.mjs"
   },
   "devDependencies": {

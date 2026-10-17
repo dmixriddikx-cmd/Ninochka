@@ -74,3 +74,11 @@ jobs:
           cd tools/browser
           npx playwright install --with-deps chromium
           npm test
+          npm run capture:visual
+      - name: Upload synthetic visual evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: vnn-visual-${{ github.sha }}
+          path: _visual
+          if-no-files-found: error
+          retention-days: 7
