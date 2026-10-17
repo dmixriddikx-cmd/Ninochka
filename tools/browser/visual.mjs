@@ -29,7 +29,7 @@ try {
       if(relative.includes('..'))return route.abort();
       try {
         let body=await readFile(root+'_site/'+relative);
-        if(relative==='app.js')body=Buffer.concat([body,Buffer.from('\nglobalThis.__vnnVisual={get state(){return state},render};')]);
+        if(relative==='app.js')body=Buffer.concat([body,Buffer.from('\nglobalThis.__vnnVisual={get state(){return state},render,startOnboarding(step=0){renderOnboardingFinal(step)}};')]);
         const ext=relative.split('.').pop();
         const contentType={html:'text/html',js:'text/javascript',css:'text/css',webmanifest:'application/manifest+json',svg:'image/svg+xml',png:'image/png',webp:'image/webp'}[ext]||'text/plain';
         return route.fulfill({body,contentType});
@@ -46,14 +46,28 @@ try {
   await page.locator('[data-sync-pin]').fill('synthetic-pin');
   await page.locator('[data-auth-form]').evaluate(form=>form.requestSubmit());
   await page.locator('.ct-app').waitFor();
-  for(let step=1;step<=4;step++){
+  async function waitForOnboardingArt(){
     await page.locator('.ct-onboarding').waitFor();
-    await page.screenshot({path:`${output}/0${step+1}-onboarding-${step}-dark-390.png`});
+    await page.evaluate(async()=>{
+      const image=getComputedStyle(document.querySelector('.ct-onboarding-art')).backgroundImage;
+      const urls=[...image.matchAll(/url\(["']?([^"')]+)["']?\)/g)].map(match=>match[1]);
+      await Promise.all(urls.map(url=>new Promise((resolve,reject)=>{const asset=new Image();asset.onload=resolve;asset.onerror=reject;asset.src=url;})));
+    });
+  }
+  let sequence=2;
+  for(let step=1;step<=4;step++){
+    await waitForOnboardingArt();
+    await page.screenshot({path:`${output}/${String(sequence++).padStart(2,'0')}-onboarding-${step}-dark-390.png`});
+    await page.locator('[data-onboard]').click();
+  }
+  await page.evaluate(()=>{__vnnVisual.state.preferences.theme='light';__vnnVisual.render();__vnnVisual.startOnboarding(0);});
+  for(let step=1;step<=4;step++){
+    await waitForOnboardingArt();
+    await page.screenshot({path:`${output}/${String(sequence++).padStart(2,'0')}-onboarding-${step}-light-390.png`});
     await page.locator('[data-onboard]').click();
   }
 
   const tabs=['home','week','plan','storage','more'];
-  let sequence=6;
   for(const theme of ['dark','light']){
     await page.evaluate(theme=>{__vnnVisual.state.preferences.theme=theme;__vnnVisual.state.preferences.onboardingSeen=true;__vnnVisual.render();},theme);
     for(const tab of tabs){
@@ -70,7 +84,7 @@ try {
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${theme} home overflows 320px`);
     await page.screenshot({path:`${output}/${String(sequence++).padStart(2,'0')}-home-${theme}-320.png`});
   }
-  console.log('Synthetic visual evidence PASS: login + 4 onboarding + 5 screens dark/light + 320px home; no production requests');
+  console.log('Synthetic visual evidence PASS: login + 4 onboarding dark/light + 5 screens dark/light + 320px home; no production requests');
 } finally {
   await browser?.close();
   api.kill();
