@@ -25,5 +25,7 @@ if (!app.includes('<option value="${c}"')) fail('currency selector must preserve
 if (!app.includes('view.onboardingStep=Number(i)||0')) fail('onboarding step must be tracked across rerenders');
 if (app.includes("data-final-action=\"reset-budget\"")) fail('production UI must not expose destructive budget reset');
 if (app.includes("resetTestData(true)")) fail('production UI must not bypass reset confirmation');
+if (!app.includes("['products','household','transport','clothes','leisure','health','gifts','other']")) fail('expense editor must include every active category');
+if (!app.includes("!categories.includes(item.category)")) fail('expense editor must preserve unknown legacy categories');
 
 console.log('UI contract checks PASS');
