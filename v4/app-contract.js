@@ -98,7 +98,7 @@ function contractMore(){const nbTotal=state.nbEntries.reduce((s,x)=>s+(x.currenc
 <section class="ct-menu"><button data-tab="storage"><i>💱</i><span><b>${tr('storageCurrencyShort')}</b><small>${state.storage.currency}</small></span><em>›</em></button><button data-final-action="refresh-storage-rate"><i>↻</i><span><b>${tr('currencyRates')}</b><small>${tr('ratesAuto')}</small></span><em>›</em></button><label><i>🌐</i><span><b>${tr('language')}</b></span><select data-setting="language"><option value="ru" ${lang()==='ru'?'selected':''}>Русский</option><option value="uk" ${lang()==='uk'?'selected':''}>Українська</option></select></label><button data-action="tutorial"><i>ⓘ</i><span><b>${tr('tutorial')}</b></span><em>›</em></button></section>
 <section class="ct-card ct-nb"><div><small>${tr('nb')}</small><strong>${fmt(nbTotal)}</strong><p>${tr('nbHint')}</p></div><button class="ct-primary" data-action="nb-add">＋ ${tr('addIncome')}</button></section>
 <section class="ct-card"><h2>${tr('backupTitle')}</h2><div class="ct-backup"><button class="ct-soft" data-action="export">${tr('exportData')}</button><label class="ct-soft">${tr('importData')}<input type="file" id="import-file" accept="application/json,.json" hidden></label></div></section>
-<section class="ct-card ct-reset-card"><h2>Тестовые данные</h2><p class="ct-profile-note">Перед передачей Нине можно обнулить суммы, расходы, план и историю. Резервная копия сохранится автоматически.</p><button class="ct-soft ct-danger ct-full" data-final-action="reset-budget">Сбросить всё к нулю</button></section></section>`}
+</section>`}
 
 function onboardingGuideVisual(i){
   if(i===2)return `<div class="ct-guide-shot ct-guide-expense">
@@ -162,8 +162,6 @@ document.addEventListener('click',e=>{
   if(action.dataset.finalAction==='storage-add'){storageAdjustmentModal('add');return}
   if(action.dataset.finalAction==='storage-sub'){storageAdjustmentModal('sub');return}
   if(action.dataset.finalAction==='refresh-storage-rate'){(async()=>{try{await fetchRate(state.storage.currency,'MDL');persist(tr('rateUpdatedNow'))}catch{notify(tr('rateFail'))}})();return}
-  if(action.dataset.finalAction==='reset-budget'){showModal('Сбросить тестовые данные?',`<div class="note">Обнулятся Хранилище, недели, расходы, обязательные платежи, NB CURATED и история. Перед сбросом останется локальная резервная копия.</div><div class="modal-actions"><button class="btn" data-action="modal-close">Отмена</button><button class="btn danger" data-final-action="reset-confirm">Обнулить всё</button></div>`);return}
-  if(action.dataset.finalAction==='reset-confirm'){closeModal();resetTestData(true);return}
   if(action.dataset.finalAction==='quick-expense'){quickExpenseModal(action.dataset.category||'other')}
 },true);
 document.addEventListener('click',e=>{
