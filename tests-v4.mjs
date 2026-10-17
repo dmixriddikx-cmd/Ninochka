@@ -17,7 +17,8 @@ c.updateExpense(s,w,nested.id,{subcategory:'Фермерский рынок'});e
 c.updateExpense(s,w,nested.id,{subcategory:''});eq(Object.hasOwn(w.expenses.find(x=>x.id===nested.id),'subcategory'),false,'nested category can be cleared');
 const incomeBefore=s.storage.balance;c.adjustStorage(s,'25','EUR','Зарплата','income');eq(s.storage.balance,incomeBefore+2500,'income credits storage');eq(s.storage.history[0].type,'income','income history type');
 const before=s.storage.balance;c.closeWeek(s,w);eq(s.storage.balance,before+c.weekResult(s,w),'close settlement');c.updateExpense(s,w,w.expenses[0].id,{amount:'60',currency:'EUR',name:'рестик',category:'leisure'});eq(s.storage.balance,before+c.weekResult(s,w),'closed edit reconcile');
-c.reopenWeek(s,w);eq(s.storage.balance,before,'reopen rollback');
+c.deleteExpense(s,w,nested.id);eq(w.expenses.some(x=>x.id===nested.id),false,'expense deleted');eq(s.storage.balance,before+c.weekResult(s,w),'closed delete reconcile');
+c.reopenWeek(s,w);eq(s.storage.balance,before,'reopen rollback after delete');
 console.log('V4 tests PASS');
 let s2=c.createState(); c.setRate(s2,'USD','EUR',0.9,'manual'); c.adjustStorage(s2,'1000','EUR','seed'); let m2=c.month(s2); c.setWeekFund(s2,m2.weeks[0],'200','USD');
 const oldFundEur=c.fundInStorage(s2,m2.weeks[0]); c.changeStorageCurrency(s2,'USD',1/0.9); eq(s2.storage.currency,'USD','storage currency'); eq(s2.storage.balance,111111,'converted storage rounded'); eq(c.fundInStorage(s2,m2.weeks[0]),20000,'fund rebased to USD'); eq(oldFundEur,18000,'old fund EUR');
@@ -57,3 +58,18 @@ eq(rebased.storage.balance,34000,'closed correction after currency change');
 c.reopenWeek(rebased,rebasedWeek);
 eq(rebased.storage.balance,20000,'reopen after currency change restores principal');
 console.log('Closed-week FX correction/reopen/savings regression PASS');
+
+
+let negative=c.createState();
+c.adjustStorage(negative,'-50','EUR','Synthetic negative balance');
+eq(negative.storage.balance,-5000,'negative storage is preserved');
+eq(negative.storage.history[0].type,'manual','negative adjustment history type');
+
+let compatible=c.createState(),compatibleWeek=c.month(compatible).weeks[0];
+c.addExpense(compatible,compatibleWeek,{name:'Legacy-compatible nested item',category:'housing',subcategory:'Коммунальные',amount:'12.34',currency:'EUR'});
+c.adjustStorage(compatible,'100','EUR','Synthetic salary','income');
+const roundTrip=c.migrate(JSON.parse(JSON.stringify(compatible)));
+eq(roundTrip.months[0].weeks[0].expenses[0].subcategory,'Коммунальные','subcategory survives schema-4 round trip');
+eq(roundTrip.storage.history[0].type,'income','income survives schema-4 round trip');
+eq(roundTrip.storage.balance,10000,'income balance survives schema-4 round trip');
+console.log('Expense delete, negative Storage and schema-4 compatibility regressions PASS');
