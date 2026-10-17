@@ -12,6 +12,8 @@ const QUICK_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 function validBudget(data) {
   const currencies = ['EUR', 'USD', 'MDL', 'UAH'];
+  const optionalText = (value, limit = 120) => value == null ||
+    (typeof value === 'string' && value.length <= limit);
   const money = (item, signed = false) => item && Number.isSafeInteger(item.amount) &&
     (signed || item.amount >= 0) && currencies.includes(item.currency) &&
     (item.rate == null || (Number.isFinite(item.rate) && item.rate > 0));
@@ -25,7 +27,7 @@ function validBudget(data) {
       m.weeks.every(w => w && [1,2,3,4].includes(w.id) &&
         ['open','closed'].includes(w.status) && money(w.fund) &&
         Number.isSafeInteger(w.settlement) && Array.isArray(w.expenses) &&
-        w.expenses.every(item => money(item, true))));
+        w.expenses.every(item => money(item, true) && optionalText(item.subcategory))));
 }
 
 function send(res, status, body) {

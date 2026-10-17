@@ -26,6 +26,7 @@ function cleanItem(item) {
   const amount = Number(item.amount);
   const currency = String(item.currency || '');
   const category = String(item.category || 'other');
+  const subcategory = String(item.subcategory || '').trim();
   const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date)
     ? new Date(date + 'T12:00:00Z') : null;
   const validDate = parsedDate && Number.isFinite(parsedDate.getTime()) &&
@@ -33,8 +34,8 @@ function cleanItem(item) {
   if (!/^[a-zA-Z0-9:_-]{4,120}$/.test(id) || !name || name.length > 120 ||
       !validDate ||
       !Number.isSafeInteger(amount) || amount <= 0 || amount > 100000000000 ||
-      !CURRENCIES.has(currency) || !CATEGORIES.has(category)) throw new Error('invalid_item');
-  return { id, name, date, amount, currency, category, status: 'pending' };
+      !CURRENCIES.has(currency) || !CATEGORIES.has(category) || subcategory.length > 120) throw new Error('invalid_item');
+  return { id, name, date, amount, currency, category, ...(subcategory ? {subcategory} : {}), status: 'pending' };
 }
 function seed() {
   // Private historical batches must never be copied into preview/test stores.

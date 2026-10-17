@@ -183,6 +183,19 @@ test('signed manual corrections round trip without rejecting the existing budget
   assert.equal((await call(sync,'PUT',{rev:1,data})).statusCode,400,'fund allocations remain nonnegative');
 });
 
+test('nested category and explicit income metadata survive both family sessions',async()=>{
+  documents.clear();
+  const data=budget();
+  data.months[0].weeks[0].expenses.push({amount:500,currency:'EUR',rate:1,name:'Synthetic groceries',category:'products',subcategory:'Супермаркет'});
+  data.storage.history.push({id:'synthetic-income',type:'income',amount:10000,currency:'EUR',converted:10000,note:'Synthetic income',date:'2026-10-17T12:00:00.000Z',actor:'nina'});
+  assert.equal((await call(sync,'PUT',{rev:0,data},token('nina'))).statusCode,200);
+  const nina=await call(sync,'GET',null,token('nina'));
+  const vova=await call(sync,'GET',null,token('volodymyr'));
+  assert.deepEqual(nina.body.data,vova.body.data);
+  assert.equal(vova.body.data.months[0].weeks[0].expenses[0].subcategory,'Супермаркет');
+  assert.equal(vova.body.data.storage.history[0].type,'income');
+});
+
 test('ambiguous storage success retries read the winning IDs instead of debiting again',async()=>{
   documents.clear();await call(sync,'PUT',{rev:0,data:budget()});
   class BlobNetworkError extends Error {}

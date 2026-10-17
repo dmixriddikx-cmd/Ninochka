@@ -12,6 +12,10 @@ m.obligations=[
 for(const w of m.weeks)c.setWeekFund(s,w,'200','USD');
 let p=c.planSummary(s,m);eq(p.mandatory,152000,'mandatory');eq(p.weekly,72000,'weeks');eq(p.total,224000,'total');eq(p.reserve,276000,'reserve');
 let w=m.weeks[0];c.addExpense(s,w,{name:'рестик',category:'leisure',amount:'50',currency:'EUR'});eq(w.expenses.at(-1).name,'рестик','expense name');
+const nested=c.addExpense(s,w,{name:'продукты',category:'products',subcategory:'Супермаркет',amount:'10',currency:'EUR'});eq(nested.subcategory,'Супермаркет','nested category saved');
+c.updateExpense(s,w,nested.id,{subcategory:'Фермерский рынок'});eq(w.expenses.find(x=>x.id===nested.id).subcategory,'Фермерский рынок','nested category updated');
+c.updateExpense(s,w,nested.id,{subcategory:''});eq(Object.hasOwn(w.expenses.find(x=>x.id===nested.id),'subcategory'),false,'nested category can be cleared');
+const incomeBefore=s.storage.balance;c.adjustStorage(s,'25','EUR','Зарплата','income');eq(s.storage.balance,incomeBefore+2500,'income credits storage');eq(s.storage.history[0].type,'income','income history type');
 const before=s.storage.balance;c.closeWeek(s,w);eq(s.storage.balance,before+c.weekResult(s,w),'close settlement');c.updateExpense(s,w,w.expenses[0].id,{amount:'60',currency:'EUR',name:'рестик',category:'leisure'});eq(s.storage.balance,before+c.weekResult(s,w),'closed edit reconcile');
 c.reopenWeek(s,w);eq(s.storage.balance,before,'reopen rollback');
 console.log('V4 tests PASS');

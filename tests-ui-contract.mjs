@@ -27,6 +27,8 @@ if (app.includes("data-final-action=\"reset-budget\"")) fail('production UI must
 if (app.includes("resetTestData(true)")) fail('production UI must not bypass reset confirmation');
 if (!app.includes("['products','household','transport','clothes','leisure','health','gifts','other']")) fail('expense editor must include every active category');
 if (!app.includes("!categories.includes(item.category)")) fail('expense editor must preserve unknown legacy categories');
+if (!app.includes("field('subcategory'")) fail('expense editor must preserve an optional nested category');
+if (!app.includes('data-final-action="income-add"')) fail('income tab must create explicit income entries');
 if (/transport-test-burst-cleaned|accidental transport burst|ww\.expenses=ww\.expenses\.filter\(x=>!ids\.has/.test(app)) fail('runtime must never auto-delete similar transport expenses');
 
 console.log('UI contract checks PASS');

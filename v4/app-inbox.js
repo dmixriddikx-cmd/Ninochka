@@ -204,7 +204,7 @@ async function applyExpenseInbox() {
       if (!target) throw new Error('Неделя не найдена: ' + monthId + '/' + weekId);
       // addExpense takes major units; cloud queue stores exact integer minor units.
       const created = core.addExpense(draft, target, {
-        name: item.name, amount: core.moneyInput(item.amount), currency: item.currency, category: item.category
+        name: item.name, subcategory: item.subcategory || '', amount: core.moneyInput(item.amount), currency: item.currency, category: item.category
       });
       created.importId = item.id;
       created.date = item.date + 'T12:00:00.000Z';

@@ -12,6 +12,8 @@ const {cleanItem} = vm.runInNewContext(source.slice(start,end) + '\n({cleanItem}
 const base = {id:'bank_row_42',name:'Coffee',date:'2026-10-15',
   amount:450,currency:'EUR',category:'products'};
 assert.equal(cleanItem(base).status,'pending');
+assert.equal(cleanItem({...base,subcategory:'Супермаркет'}).subcategory,'Супермаркет');
+assert.throws(()=>cleanItem({...base,subcategory:'x'.repeat(121)}),/invalid_item/);
 for(const date of ['2026-13-99','2026-02-30','2026-00-15','not-a-date']){
   assert.throws(()=>cleanItem({...base,date}), /invalid_item/,
     'Bad bank screenshot date must give a clear client error: '+date);

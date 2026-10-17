@@ -99,11 +99,12 @@ export function planSummary(state,m){
   return {mandatory,weekly,total,reserve:state.storage.balance-total};
 }
 
-export function adjustStorage(state,amount,currency,note=''){
+export function adjustStorage(state,amount,currency,note='',type='manual'){
   const minor=cents(amount);
   const converted=convert(state,minor,currency,state.storage.currency);
+  const entryType=type==='income'?'income':'manual';
   state.storage.balance += converted;
-  state.storage.history.unshift({id:uid(),type:'manual',amount:minor,currency,converted,note:String(note||''),date:new Date().toISOString()});
+  state.storage.history.unshift({id:uid(),type:entryType,amount:minor,currency,converted,note:String(note||''),date:new Date().toISOString()});
 }
 export function setStorageBalance(state,target,currency=state.storage.currency,note='Сверка баланса'){
   const targetMinor=cents(target);
@@ -135,11 +136,17 @@ export function setWeekFund(state,w,amount,currency){
   w.fund={amount:cents(amount),currency,rate:r};
   if(w.status==='closed') reconcileWeek(state,w);
 }
-export function addExpense(state,w,{name,category='other',amount,currency}){
+function cleanSubcategory(value){
+  const clean=String(value??'').trim();
+  if(clean.length>120)throw new Error('invalid_subcategory');
+  return clean;
+}
+export function addExpense(state,w,{name,category='other',subcategory='',amount,currency}){
   const clean=String(name||'').trim(); if(!clean) throw new Error('name_required');
   const r=currency===state.storage.currency?1:getRate(state,currency,state.storage.currency);
   if(currency!==state.storage.currency&&!r) throw new Error(`missing_rate:${currency}:${state.storage.currency}`);
   const item={id:uid(),name:clean,category,amount:cents(amount),currency,rate:r,date:new Date().toISOString()};
+  const detail=cleanSubcategory(subcategory);if(detail)item.subcategory=detail;
   w.expenses.push(item);
   if(w.status==='closed') reconcileWeek(state,w);
   return item;
@@ -150,7 +157,12 @@ export function updateExpense(state,w,id,patch){
   const currency=patch.currency||old.currency;
   const r=currency===state.storage.currency?1:getRate(state,currency,state.storage.currency);
   if(currency!==state.storage.currency&&!r) throw new Error(`missing_rate:${currency}:${state.storage.currency}`);
-  w.expenses[i]={...old,...patch,name:String(patch.name??old.name).trim(),amount:cents(patch.amount??moneyInput(old.amount)),currency,rate:r};
+  const next={...old,...patch,name:String(patch.name??old.name).trim(),amount:cents(patch.amount??moneyInput(old.amount)),currency,rate:r};
+  if(Object.hasOwn(patch,'subcategory')){
+    const detail=cleanSubcategory(patch.subcategory);
+    if(detail)next.subcategory=detail;else delete next.subcategory;
+  }
+  w.expenses[i]=next;
   if(w.status==='closed') reconcileWeek(state,w);
 }
 export function deleteExpense(state,w,id){
