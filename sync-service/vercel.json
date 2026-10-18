@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "node build-web.mjs",
+  "outputDirectory": "public",
   "functions": {
     "api/sync.js": {
       "maxDuration": 30
