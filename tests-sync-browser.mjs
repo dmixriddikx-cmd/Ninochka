@@ -5,6 +5,18 @@ import * as core from './corefix.js';
 
 const source=fs.readFileSync('v4/app-sync.js','utf8');
 const functionSource=(name,end)=>source.slice(source.indexOf(name),source.indexOf(end,source.indexOf(name)));
+{
+  const app=fs.readFileSync('v4/app-01.js','utf8');
+  const load=app.slice(app.indexOf('function load(){'),app.indexOf('function save(){'));
+  const values=new Map([['ninochka-v4',JSON.stringify({storage:{balance:4300}})],
+    ['vnn-next-budget-v1',JSON.stringify({storage:{balance:0}})]]);
+  const context={STORE:'ninochka-v4',localStorage:{getItem:k=>values.get(k)||null},
+    core:{migrate:x=>x,createState:()=>({})}};
+  vm.createContext(context);vm.runInContext(load,context);
+  assert.equal(context.load().storage.balance,4300,'Existing Ninochka record takes precedence over isolated empty export');
+  values.delete('ninochka-v4');
+  assert.equal(context.load().storage.balance,0,'A recent VNN local copy remains recoverable if no legacy key exists');
+}
 function scope() {
   const storage=new Map();
   const localStorage={getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)};
@@ -17,6 +29,13 @@ function scope() {
     functionSource('async function connectSync(', 'function activateSync(')+
     functionSource('async function refreshSync(', "document.addEventListener('click'"),sandbox);
   return sandbox;
+}
+{
+  const s=scope();
+  s.syncRequest=async()=>({rev:0,actor:'nina',data:null});
+  await s.connectSync('','',true);
+  assert.equal(s.sync.paused,true,'Missing cloud document stops local writes');
+  assert.equal(s.queued,undefined,'An empty export cannot initialize or replace the family budget');
 }
 {
   const s=scope();s.sync.dirty=true;
@@ -84,13 +103,20 @@ console.log('Browser synchronization regression PASS: reconnect conflicts, in-fl
 console.log('Live calendar rollover regression PASS: four weeks, one settlement and queued cloud save');
 
 {
-  const s={sync:{token:'synthetic'},SYNC_API:'https://synthetic.example',fetch:async(_url,options)=>{
-    assert.equal(options.headers['X-VNN-Write-Protocol'],'2');
+  const s={sync:{token:'synthetic',writeProtocol:0},SYNC_API:'https://synthetic.example',fetch:async(_url,options)=>{
+    assert.equal(options.headers['X-VNN-Write-Protocol'],undefined,'old backend rejects extra preflight header');
     return {status:200,ok:true,json:async()=>({rev:2})};
   }};
   vm.createContext(s);vm.runInContext(functionSource('async function syncRequest(', 'function adoptRemote('),s);
   await s.syncRequest('PUT',{rev:1,data:{synthetic:true}});
+  s.fetch=async(_url,options)=>({status:200,ok:true,json:async()=>({rev:2,writeProtocol:2})});
+  await s.syncRequest('GET');
+  s.fetch=async(_url,options)=>{
+    assert.equal(options.headers['X-VNN-Write-Protocol'],'2');
+    return {status:200,ok:true,json:async()=>({rev:3})};
+  };
+  await s.syncRequest('PUT',{rev:2,data:{synthetic:true}});
   s.fetch=async()=>({status:426,ok:false,json:async()=>({error:'client_upgrade_required'})});
   await assert.rejects(s.syncRequest('PUT',{rev:1,data:{synthetic:true}}),error=>error.status===426&&error.message.includes('Местная копия сохранена'));
 }
-console.log('Writer protocol browser regression PASS: current header sent, upgrade rejection preserves local copy');
+console.log('Writer protocol browser regression PASS: old API works without preflight header; upgraded API advertises protocol 2');

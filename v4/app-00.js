@@ -1,7 +1,7 @@
 import * as core from './corefix.js';
 
 const app=document.querySelector('#app'), modal=document.querySelector('#modal'), toast=document.querySelector('#toast');
-const STORE='vnn-next-budget-v1';
+const STORE='ninochka-v4';
 let state=load(), view={tab:'home',week:currentWeekIndex()}, planDraft=null, pendingPlan=null;
 core.ensureCurrentMonth(state); save();
 

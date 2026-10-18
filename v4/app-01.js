@@ -10,7 +10,7 @@ const w=()=>core.week(m(),view.week);
 function currentWeekIndex(){return Math.min(4,Math.floor((new Date().getDate()-1)/7)+1)}
 function firstOpenWeekId(){const mm=m();return mm?.weeks?.find(x=>x.status!=='closed')?.id ?? mm?.weeks?.at(-1)?.id ?? 1}
 function currentActiveWeek(){const mm=m();return mm?.weeks?.find(x=>x.status!=='closed') ?? mm?.weeks?.at(-1)}
-function load(){try{return core.migrate(JSON.parse(localStorage.getItem(STORE)||'null'))}catch{return core.createState()}}
+function load(){try{return core.migrate(JSON.parse(localStorage.getItem(STORE)||localStorage.getItem('vnn-next-budget-v1')||localStorage.getItem('nina-family-finance:current')||'null'))}catch{return core.createState()}}
 function save(){localStorage.setItem(STORE,JSON.stringify(state));}
 function persist(msg){save();render();if(msg)notify(msg)}
 function notify(msg){toast.textContent=msg;toast.hidden=false;clearTimeout(notify.t);notify.t=setTimeout(()=>toast.hidden=true,3500)}

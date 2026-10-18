@@ -1,10 +1,10 @@
 // Shared family budget. Local data stays as the recovery copy; the Vercel store is authoritative after activation.
 const SYNC_API = String(globalThis.NINOCHKA_SYNC_API || '').replace(/\/$/, '');
-const SYNC_TOKEN = 'vnn-next-sync-token';
-const SYNC_LOGIN = 'vnn-next-sync-login';
-const SYNC_REV = 'vnn-next-sync-rev';
-const SYNC_READY = 'vnn-next-sync-ready';
-const SYNC_DIRTY = 'vnn-next-sync-dirty';
+const SYNC_TOKEN = 'ninochka-sync-token';
+const SYNC_LOGIN = 'ninochka-sync-login';
+const SYNC_REV = 'ninochka-sync-rev';
+const SYNC_READY = 'ninochka-sync-ready';
+const SYNC_DIRTY = 'ninochka-sync-dirty';
 const sync = {
   token: localStorage.getItem(SYNC_TOKEN) || '',
   login: localStorage.getItem(SYNC_LOGIN) || '',
@@ -15,7 +15,8 @@ const sync = {
   paused: false,
   error: '',
   actor: '',
-  dirty: localStorage.getItem(SYNC_DIRTY) === '1'
+  dirty: localStorage.getItem(SYNC_DIRTY) === '1',
+  writeProtocol: 0
 };
 const saveLocalOnly = save;
 
@@ -214,7 +215,7 @@ globalThis.NinochkaSync = {
 
 async function syncRequest(method, body, authenticated = true) {
   const headers = body ? { 'Content-Type': 'application/json' } : {};
-  if (method === 'PUT') headers['X-VNN-Write-Protocol'] = '2';
+  if (method === 'PUT' && sync.writeProtocol === 2) headers['X-VNN-Write-Protocol'] = '2';
   if (authenticated && sync.token) headers.Authorization = `Bearer ${sync.token}`;
 
   const response = await fetch(`${SYNC_API}/api/sync`, {
@@ -224,6 +225,7 @@ async function syncRequest(method, body, authenticated = true) {
     cache: 'no-store'
   });
   const result = await response.json().catch(() => ({}));
+  if (method === 'GET' && response.ok) sync.writeProtocol = result.writeProtocol === 2 ? 2 : 0;
   if (response.status === 409) return { conflict: true, ...result };
   if (!response.ok) {
     const message = response.status === 401
@@ -451,10 +453,11 @@ async function connectSync(login = '', pin = '', restoring = false, authenticate
     } else if (remote.data) {
       adoptRemote(remote.data);
     } else {
-      sync.dirty = true;
-      localStorage.setItem(SYNC_DIRTY, '1');
+      // A missing cloud document is not permission to upload an old local
+      // export. Keep it for recovery until the family record is verified.
+      sync.paused = true;
+      sync.error = 'Общий бюджет не найден. Местная копия сохранена; запись остановлена.';
       saveLocalOnly();
-      queueSync();
     }
   } catch (error) {
     if (restoring && error.status === 401) clearSyncSession('Сессия закончилась. Войди снова.');
@@ -494,10 +497,9 @@ function activateSync() {
     sync.dirty = false;
     adoptRemote(sync.staged.data);
   } else {
-    sync.dirty = true;
-    localStorage.setItem(SYNC_DIRTY, '1');
+    sync.paused = true;
+    sync.error = 'Общий бюджет не найден. Местная копия сохранена; запись остановлена.';
     saveLocalOnly();
-    queueSync();
   }
 
   sync.staged = null;

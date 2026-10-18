@@ -194,7 +194,7 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const current = await readBudget();
-      return send(res, 200, { ...current, actor,
+      return send(res, 200, { ...current, actor, writeProtocol: 2,
         environment: process.env.VERCEL_ENV || 'development',
         ...(process.env.VERCEL_ENV === 'preview' ? { storageNamespace: storagePath('') } : {}) });
     }
