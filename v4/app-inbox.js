@@ -107,6 +107,10 @@ function reviewExpenseInbox() {
       '" style="min-width:0;max-width:170px"></label>' +
       '<label class="field"><span>Покупка</span><input data-inbox-name="' + escape(item.id) +
       '" maxlength="120" value="' + escape(item.name) + '"></label>' +
+      '<label class="field"><span>Категория</span><select data-inbox-category="' + escape(item.id) + '">' +
+      ['products','household','transport','clothes','leisure','health','gifts','other']
+        .map(category => '<option value="' + category + '"' + (category === item.category ? ' selected' : '') + '>' +
+          escape(contractLabel(category)) + '</option>').join('') + '</select></label>' +
       '<div style="display:flex;gap:8px"><label class="field" style="flex:1;min-width:0"><span>Сумма</span>' +
       '<input data-inbox-amount="' + escape(item.id) + '" inputmode="decimal" value="' + core.moneyInput(item.amount) +
       '"></label><label class="field"><span>Валюта</span><select data-inbox-currency="' + escape(item.id) + '">' +
@@ -150,9 +154,12 @@ function inboxReviewedItem(item) {
   const name = String(value('name') ?? item.name).trim();
   const amount = core.cents(value('amount') ?? core.moneyInput(item.amount));
   const currency = value('currency') ?? item.currency;
+  const category = value('category') ?? item.category;
   if (!name || name.length > 120 || amount <= 0 || !core.CURRENCIES.includes(currency))
     throw new Error('Проверь название, сумму и валюту покупки');
-  return { ...item, name, amount, currency };
+  if (!['products','household','transport','clothes','leisure','health','gifts','other'].includes(category))
+    throw new Error('Проверь категорию покупки');
+  return { ...item, name, amount, currency, category };
 }
 async function applyExpenseInbox() {
   if (expenseInbox.applying) return;

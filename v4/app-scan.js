@@ -1,6 +1,61 @@
-// Upload bank screenshots from VNN itself. Recognition stages expenses ONLY:
-// the budget is changed later by the existing one-confirmation inbox review.
+// OCR runs in the browser; only reviewed transaction fields reach the inbox.
 const bankScan = { busy:false };
+let localScanLibrary;
+function loadLocalScanLibrary() {
+  if (localScanLibrary) return localScanLibrary;
+  localScanLibrary = new Promise((resolve,reject) => {
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js';
+    script.onload=()=>globalThis.Tesseract?.createWorker ? resolve(globalThis.Tesseract) : reject(new Error('OCR не загрузился'));
+    script.onerror=()=>reject(new Error('Нет связи с бесплатным OCR. Попробуй снова при подключении к интернету.'));
+    document.head.append(script);
+  }).catch(error=>{localScanLibrary=null;throw error;});
+  return localScanLibrary;
+}
+function scanCategory(label) {
+  if (/taxi|uber|bolt|fuel|petrol|транспорт|такси|бензин/i.test(label)) return 'transport';
+  if (/market|food|grocery|cafe|restaurant|продукт|магазин|кафе|ресторан/i.test(label)) return 'products';
+  if (/pharm|clinic|аптек|медицин/i.test(label)) return 'health';
+  if (/rent|utility|аренд|коммунал/i.test(label)) return 'household';
+  if (/cloth|одежд/i.test(label)) return 'clothes';
+  return 'other';
+}
+function scanDate(text,hint) {
+  const iso=text.match(/\b(20\d\d)[-./](0?[1-9]|1[0-2])[-./](0?[1-9]|[12]\d|3[01])\b/);
+  const local=text.match(/\b(0?[1-9]|[12]\d|3[01])[./-](0?[1-9]|1[0-2])[./-](20\d\d)\b/);
+  const parts=iso ? [iso[1],iso[2],iso[3]] : local ? [local[3],local[2],local[1]] : null;
+  if (!parts) return hint;
+  const value=parts.map((x,i)=>i?String(x).padStart(2,'0'):x).join('-');
+  const parsed=new Date(value+'T12:00:00Z');
+  return parsed.toISOString().slice(0,10)===value ? value : hint;
+}
+function parseLocalBankText(text,captureDate,digest) {
+  // Never persist OCR text or bank/card identifiers; keep only a short label.
+  const lines=String(text||'').split(/\n/).map(x=>x.trim()).filter(Boolean);
+  const excluded=/(?:declined|rejected|pending|processing|отклон|ожидан|неуспеш|в обработке)/i;
+  const amounts=[];
+  for (const [lineNo,line] of lines.entries()) {
+    if (excluded.test(line)) continue;
+    const match=line.match(/(?:^|\s|[-−])((?:\d{1,3}(?:[ .]\d{3})*|\d{1,8})[.,]\d{2})\s*(MDL|USD|EUR|лей|леев|€|\$)/i) ||
+      line.match(/(?:MDL|USD|EUR|€|\$)\s*((?:\d{1,3}(?:[ .]\d{3})*|\d{1,8})[.,]\d{2})/i);
+    if (!match) continue;
+    const raw=match[1].replace(/(?<=\d)[ .](?=\d{3}(?:[.,]|$))/g,'').replace(',','.');
+    const minor=Math.round(Number(raw)*100);
+    if (!Number.isSafeInteger(minor) || minor<=0) continue;
+    const currencyMatch=line.match(/MDL|USD|EUR|лей|леев|€|\$/i);
+    const currency=currencyMatch ? ({'€':'EUR','$':'USD',лей:'MDL',леев:'MDL'}[currencyMatch[0].toLowerCase()]||currencyMatch[0].toUpperCase()) : null;
+    if (!currency) continue;
+    const redact=value=>value.replace(/\b[A-Z]{2}\d{2}(?:[A-Z0-9 ]{11,30})\b/gi,'')
+      .replace(/\b(?:\d{4}[ -]?){3,4}\d{4}\b/g,'').replace(/\b\d{12,19}\b/g,'');
+    const description=redact(line.replace(match[0],'')).trim();
+    const nearby=lines.slice(Math.max(0,lineNo-2),lineNo+2).join(' ');
+    const label=redact(description || lines[lineNo-1] || 'Операция').trim().slice(0,120);
+    const date=scanDate(nearby,captureDate);
+    if (date) amounts.push({id:'scan_'+digest.slice(0,32)+'_'+lineNo,name:label||'Операция',date,amount:minor,
+      currency,category:scanCategory(label)});
+  }
+  return {items:amounts,excludedCount:lines.filter(x=>excluded.test(x)).length,uncertainCount:amounts.length?0:1};
+}
 const originalScanBanner = inboxBanner;
 inboxBanner = function () {
   if (!sync.connected) return '';
@@ -12,7 +67,7 @@ inboxBanner = function () {
         (bankScan.busy?' disabled':'') + '>' +
         (bankScan.busy?'Распознаю…':'＋ Загрузить') + '</button></div>' +
     '<input data-scan-files type="file" accept="image/*" multiple style="display:none">' +
-    '<small style="display:block;margin-top:5px">Снимки обрабатывает внешний ИИ-сервис. Банковские пароли и полные номера карт не нужны.</small>' +
+    '<small style="display:block;margin-top:5px">Распознавание на устройстве, без отправки снимка в облако. Проверь все цифры перед подтверждением.</small>' +
     '</section>';
   return upload + originalScanBanner();
 };
@@ -55,22 +110,18 @@ function screenshotFileDate(file) {
   return d.getFullYear() + '-' + two(d.getMonth()+1) + '-' + two(d.getDate());
 }
 async function recognizeBankScreenshot(image,captureDate){
-  const response = await fetch(SYNC_API+'/api/recognize',{
-    method:'POST',cache:'no-store',
-    headers:{Authorization:'Bearer '+sync.token,'Content-Type':'application/json'},
-    body:JSON.stringify({image,captureDate})
+  const library=await loadLocalScanLibrary();
+  const worker=await library.createWorker(['eng','rus'],1,{
+    workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/worker.min.js',
+    corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@7.0.0',
+    langPath:'https://tessdata.projectnaptha.com/4.0.0'
   });
-  const result=await response.json().catch(()=>({}));
-  if(!response.ok){
-    const messages={
-      scan_not_configured:'Распознавание ещё не подключено: нужен API-ключ и включение лимита.',
-      invalid_session:'Сессия закончилась. Войди снова.',
-      image_too_large:'Скриншот слишком большой.',
-      recognition_provider_unavailable:'Сервис распознавания временно недоступен.'
-    };
-    throw new Error(messages[result.error]||'Не удалось распознать скриншот');
-  }
-  return result;
+  try {
+    const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(image))))
+      .map(byte=>byte.toString(16).padStart(2,'0')).join('');
+    const result=await worker.recognize(image);
+    return parseLocalBankText(result.data.text,captureDate,digest);
+  } finally {await worker.terminate();}
 }
 
 async function scanBankFiles(files){

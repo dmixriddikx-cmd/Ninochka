@@ -37,4 +37,12 @@ const cleared = inboxResolvedDate(row,new Map([['bank_row_42','']]));
 assert.equal(cleared,'', 'Empty date must NOT silently restore the screenshot date');
 assert.equal(/^\\d{4}-\\d{2}-\\d{2}$/.test(cleared),false,
   'Cleared date must be rejected by applyExpenseInbox validation');
+const fields={name:'Coffee',amount:'4.50',currency:'EUR',category:'transport'};
+const reviewContext={modal:{querySelectorAll(selector){const key=selector.match(/data-inbox-(\w+)/)?.[1];
+  return key in fields ? [{getAttribute:()=>base.id,value:fields[key]}] : [];}},
+ core:{cents:value=>Math.round(Number(value)*100),moneyInput:value=>String(value/100),CURRENCIES:['EUR','USD','MDL','UAH']}};
+const {inboxReviewedItem}=vm.runInNewContext(browserSource.slice(dateStart,dateEnd)+'\n({inboxReviewedItem})',reviewContext);
+assert.equal(inboxReviewedItem(base).category,'transport','The category changed during review must reach the budget');
+fields.category='invalid';
+assert.throws(()=>inboxReviewedItem(base),/категорию/);
 console.log('VNN inbox input validation PASS: invalid bank dates produce 400-style validation errors');

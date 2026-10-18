@@ -60,6 +60,7 @@ jobs:
           node tests-inbox-validation.mjs
           node tests-inbox-race.mjs
           node tests-scan-batch.mjs
+          node tests-scan-local.mjs
           node tests-importer.mjs
           node tests-transaction-status.mjs
           node tests-recognition.mjs
