@@ -70,12 +70,6 @@ jobs:
           node tests-ui-runtime.mjs _site
       - name: Mobile synthetic browser verification
         run: |
-          node sync-service/build-web.mjs
-          node tests-web-build.mjs
-          node tests-ui-contract.mjs sync-service/public
-          node tests-ui-runtime.mjs sync-service/public
-      - name: Mobile synthetic browser scenarios
-        run: |
           npm ci --prefix tools/browser --ignore-scripts
           cd tools/browser
           npx playwright install --with-deps chromium
