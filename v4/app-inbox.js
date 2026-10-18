@@ -97,7 +97,7 @@ function reviewExpenseInbox() {
     return '<div class="ct-expense-row" style="display:block;margin:9px 0">' +
       '<label style="display:flex;gap:10px;align-items:center">' +
       '<input type="checkbox" data-inbox-check="' + escape(item.id) + '"' +
-      (possibleDuplicate ? '' : ' checked') + ' style="width:18px;height:18px">' +
+      (possibleDuplicate || item.id.startsWith('scan_') ? '' : ' checked') + ' style="width:18px;height:18px">' +
       '<span style="flex:1;min-width:0"><b>' + escape(item.name) + '</b><small style="display:block">' +
       '<span data-inbox-period>' + escape(target) + '</span> · ' + escape(category) + '</small>' +
       (possibleDuplicate ? '<small style="display:block">⚠ Возможный дубль — проверь перед добавлением</small>' : '') +
@@ -117,13 +117,13 @@ function reviewExpenseInbox() {
       core.CURRENCIES.map(c => '<option value="' + c + '"' + (c === item.currency ? ' selected' : '') + '>' + c + '</option>').join('') +
       '</select></label></div></div>';
   }).join('');
-  const initiallySelected = list.filter(item => !inboxPossibleDuplicate(item));
+  const initiallySelected = list.filter(item => !inboxPossibleDuplicate(item) && !item.id.startsWith('scan_'));
   const currencies = [...new Set(initiallySelected.map(x => x.currency))].map(currency => {
     const sum = initiallySelected.filter(x => x.currency === currency)
       .reduce((a,x) => a+x.amount,0);
     return fmt(sum,currency);
   }).join(' + ') || '—';
-  showModal('Проверка расходов', '<p class="note">Подтвердить можно одним нажатием. ' +
+  showModal('Проверка расходов', '<p class="note">Для распознанных снимков сначала проверь каждую строку и отметь её галочкой. ' +
     'Проверь даты, особенно если банк написал «Вчера». Расходы попадут в недели по выбранной дате. Точные повторы будут пропущены, похожие операции нужно проверить. Прошедшая неделя закроется и её итог изменит Хранилище, даже ниже нуля.</p>' +
     '<div style="max-height:48vh;overflow:auto">' + rows + '</div>' +
     '<p><strong>Выбрано: <span data-inbox-total>' + escape(currencies) + '</span></strong></p>' +

@@ -24,6 +24,8 @@ assert.throws(()=>cleanItem({...base,amount:4.50}),/invalid_item/,
 // Exercise the actual browser date resolution, not a reimplementation.
 // Clearing a selected date must fail validation rather than silently using the bank hint.
 const browserSource = fs.readFileSync(new URL('./v4/app-inbox.js', import.meta.url), 'utf8');
+assert.match(browserSource,/possibleDuplicate \|\| item\.id\.startsWith\('scan_'\)/,
+  'OCR rows require an explicit selection after review');
 const dateStart = browserSource.indexOf('function inboxResolvedDate(');
 const dateEnd = browserSource.indexOf('async function applyExpenseInbox(', dateStart);
 assert.ok(dateStart >= 0 && dateEnd > dateStart, 'Date resolver must exist in the browser importer');
