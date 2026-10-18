@@ -1,5 +1,5 @@
 // Public shell only. Financial responses and sessions are never cached here.
-const CACHE = 'vnn-next-shell-__BUILD_ID__';
+const CACHE = 'vnn-shell-__BUILD_ID__';
 const SHELL = ['./', './index.html', './app.js?v=__BUILD_ID__',
   './contract.css?v=__BUILD_ID__', './sync-config.js?v=__BUILD_ID__',
   './core.js', './corefix.js', './manifest.webmanifest',
@@ -13,7 +13,7 @@ self.addEventListener('install', event => {
 });
 self.addEventListener('activate', event => {
   event.waitUntil(caches.keys().then(keys => Promise.all(keys
-    .filter(key => key.startsWith('vnn-next-shell-') && key !== CACHE)
+    .filter(key => (key.startsWith('vnn-shell-') || key.startsWith('vnn-next-shell-')) && key !== CACHE)
     .map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', event => {

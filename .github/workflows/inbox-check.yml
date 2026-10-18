@@ -52,6 +52,7 @@ jobs:
           node tests-auth.mjs
           npm test --prefix sync-service
           node tests-sync-browser.mjs
+          node tests-release-route.mjs
           node tests-production-backup.mjs
           node --experimental-test-module-mocks tests-api-recognition.mjs
           node --test sync-service/quick-entry.test.mjs
