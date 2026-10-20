@@ -179,3 +179,8 @@ Current environment evidence: no bound family-session Secret; managed Cloud
 Browser activation fails because `NODE_REPL_AUTH_TOKEN` is not provisioned.
 No browser runtime credentials were invented and no signing secret was extracted
 to manufacture a family session. The missing authorized session is the next gate.
+
+
+## Preview deployment checkpoint — 2026-10-19
+
+The existing Vercel project `ninochka-sync` was linked to the canonical GitHub repository `dmixriddikx-cmd/Ninochka` by the owner. This documentation-only update on `feature/charlie-expense-inbox-20261015` requests a fresh **Preview** build via the Git push integration. It does not authorize promotion, migration, modification of the production `family-budget.json`, or merging PR #2. Validate the Preview deployment SHA, isolated namespace, API routes and smoke tests before any production cutover.
