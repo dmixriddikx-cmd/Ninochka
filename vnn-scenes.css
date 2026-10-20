@@ -221,3 +221,12 @@ html,body{background:var(--ct-bg)!important}
 :root[data-theme="light"] .ct-nav.ct-v2-nav .ct-nav-item{color:#6f6170!important}
 :root[data-theme="light"] .ct-nav.ct-v2-nav .ct-nav-item.active,
 :root[data-theme="light"] .ct-nav.ct-v2-nav .ct-v2-fab{color:#915774!important}
+
+/* In an installed iPhone app the page extends behind the translucent status
+   bar. Reserve the device's top safe area for the system clock and island. */
+.ct-app{
+  padding-top:max(10px, calc(env(safe-area-inset-top, 0px) + 10px))!important;
+}
+.ct-app .ct-top{
+  top:env(safe-area-inset-top, 0px);
+}
