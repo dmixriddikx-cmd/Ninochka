@@ -43,15 +43,17 @@ jobs:
           BUILD_ID="$(git rev-parse --short HEAD)"
           sed "s/__BUILD_ID__/${BUILD_ID}/g" index.html > _site/index.html
           sed "s/__BUILD_ID__/${BUILD_ID}/g" sw.js > _site/sw.js
-          cp contract.css core.js corefix.js sync-config.js _site/
+          cp core.js corefix.js sync-config.js _site/
+          cat contract.css v2.css > _site/contract.css
           cp -r assets/* _site/assets/
           cp manifest.webmanifest _site/
           python -m pip install --disable-pip-version-check --quiet 'CairoSVG==2.8.2'
           python scripts/build-vnn-icons.py _site
-          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js v4/app-inbox.js v4/app-quick.js v4/app-scan.js > _site/app.js
+          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js v4/app-inbox.js v4/app-quick.js v4/app-scan.js v4/app-ux-v2.js > _site/app.js
           touch _site/.nojekyll
 
           node --check _site/app.js
+          node --check v4/app-ux-v2.js
           node --check _site/core.js
           node --check _site/corefix.js
           node tests-v4.mjs
@@ -73,6 +75,7 @@ jobs:
           node --test sync-service/quick-entry.test.mjs
           node tests-ui-contract.mjs _site
           node tests-ui-runtime.mjs _site
+          node tests-v2-release.mjs _site
 
           test -s _site/index.html
           test -s _site/manifest.webmanifest
