@@ -20,9 +20,12 @@ const v2Labels = () => lang()==='uk' ? {
 };
 const v2Money = n => fmt(Number.isFinite(n)?n:0);
 const v2Icon = name => {
-  const paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M9 21v-7h6v7"/>',plan:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 9h18m-13 4h3m-3 4h7"/>',add:'<path d="M12 5v14M5 12h14"/>',storage:'<path d="M5 9a7 7 0 0 1 13 3 4 4 0 0 1-1 8H8a5 5 0 0 1-3-9Z"/><path d="M8 9c1-2 3-3 5-3"/>',more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>'};
+  const paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M9 21v-7h6v7"/>',plan:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 9h18m-13 4h3m-3 4h7"/>',add:'<path d="M12 5v14M5 12h14"/>',storage:'<path d="M5 9a7 7 0 0 1 13 3 4 4 0 0 1-1 8H8a5 5 0 0 1-3-9Z"/><path d="M8 9c1-2 3-3 5-3"/>',more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+  products:'<path d="M3 10h18l-2 11H5L3 10Zm5 0 4-7 4 7M9 14v3m6-3v3"/>',household:'<path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7"/>',transport:'<path d="M5 16 7 7h10l2 9M4 16h16v4H4zM7 20v2m10-2v2M7 13h10"/>',leisure:'<path d="M7 8h10a5 5 0 0 1 5 6l-2 5a2 2 0 0 1-3 1l-3-3h-4l-3 3a2 2 0 0 1-3-1l-2-5a5 5 0 0 1 5-6ZM7 12v4m-2-2h4m7 0h.01m3-2h.01"/>',clothes:'<path d="m8 3-5 4 3 4 2-2v12h8V9l2 2 3-4-5-4-2 3h-4z"/>',health:'<path d="M12 21s-9-5-9-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6-9 11-9 11Z"/>',gifts:'<rect x="3" y="8" width="18" height="13" rx="1"/><path d="M3 12h18M12 8v13M12 8c-8 0-7-6-3-6 2 0 3 3 3 6Zm0 0c8 0 7-6 3-6-2 0-3 3-3 6Z"/>',school:'<path d="m2 9 10-5 10 5-10 5L2 9Zm4 3v6c4 3 8 3 12 0v-6m4-3v8"/>',utilities:'<path d="M8 3h8v4H8zM6 7h12v14H6zM9 11h6m-6 4h6"/>'};
   return '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths[name]+'</svg>';
 };
+contractIcon=function(id){return v2Icon(({other:'more'})[id]||id)};
+contractObligationIcon=function(item){return v2Icon(({rent:'household',utilities:'utilities',school:'school'})[item.name]||'more')};
 const v2MonthFigures = () => {
   const weeks = m().weeks.map(week => ({
     week, spent:safe(()=>core.weekSpent(state,week),0),
@@ -98,7 +101,7 @@ contractWeek=function(){
 const v2OriginalPlan=contractPlan;
 contractPlan=function(){
   return v2OriginalPlan().replace('<section class="ct-plan-page">',
-    '<section class="ct-plan-page"><div class="ct-v2-subart ct-v2-plansart"><img src="./assets/cat-pencil.svg" alt=""><span>'+tr('plan')+'</span></div>');
+    '<section class="ct-plan-page"><div class="ct-v2-subart ct-v2-plansart"><img src="./assets/cat-pencil.svg" alt=""><span>'+tr('plan')+'</span></div>').replaceAll('<i>▣</i>','<i>'+v2Icon('plan')+'</i>');
 };
 const v2OriginalStorage=contractStorage;
 contractStorage=function(){

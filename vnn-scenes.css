@@ -53,7 +53,8 @@ html,body{background:var(--ct-bg)!important}
 .ct-v2-picture em{color:#ffc9ac;position:absolute;right:9px;bottom:10px}
 .ct-v2-vault{background-image:url('./assets/scene/storage.webp')!important;background-position:48% 66%}
 .ct-v2-planpic{background-image:url('./assets/scene/plan.webp')!important;background-position:68% center}
-.ct-v2-jar{background-image:url('./assets/scene/expenses.webp')!important;background-position:43% 40%}
+.ct-v2-jar{background-image:url('./assets/scene/saved.webp')!important;background-position:50% 44%}
+.ct-category i svg,.ct-plan-week>i svg,.ct-obligation>i svg{width:24px;height:24px;display:block;margin:auto}
 .ct-v2-chart{background:var(--ct-card)!important}.ct-v2-chart-row>div i{background:linear-gradient(90deg,#efae91,#bca4ca)}
 .ct-v2-home-end .ct-primary,.ct-primary{background:#e9ae8e!important;color:#32232a!important;font-weight:750}
 

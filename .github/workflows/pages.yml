@@ -90,7 +90,7 @@ jobs:
           grep -q 'rel="apple-touch-icon"' _site/index.html
           grep -q 'rel="manifest"' _site/index.html
           test -s _site/contract.css
-          for scene in home expenses storage plan more; do test -s "_site/assets/scene/${scene}.webp"; done
+          for scene in home expenses storage plan more saved; do test -s "_site/assets/scene/${scene}.webp"; done
           test -s _site/app.js
           test -s _site/assets/storage-approved.b64
           test -s _site/assets/week-empty-approved.b64
