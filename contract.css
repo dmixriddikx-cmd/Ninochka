@@ -74,7 +74,6 @@ body{overflow-x:hidden}
   .modal-body{padding:18px!important}
 }
 
-
 /* AUTH GATE — approved warm/day + graphite/violet night family entrance */
 .ct-auth-shell{min-height:100svh;width:100%;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) 18px max(24px,env(safe-area-inset-bottom));box-sizing:border-box;background:
 linear-gradient(180deg,rgba(20,12,20,.24),rgba(20,12,20,.48)),var(--approved-dark-hero),radial-gradient(circle at 70% 20%,#694267,#171119 62%);background-size:cover;background-position:center}
@@ -439,43 +438,3 @@ body{overflow-x:hidden}
   .ct-week-card{min-height:270px}
   .ct-storage-hero{min-height:455px}
 }
-
-
-/* VNN visual contract v3 — reference-led mobile finance scenes */
-:root{
-  --vnn-bg:#110f16;--vnn-panel:rgba(34,30,38,.82);--vnn-line:rgba(255,255,255,.13);
-  --vnn-peach:#f7b08d;--vnn-lilac:#b99ae8;--vnn-pink:#ee9da7;
-}
-html,body{background:var(--vnn-bg)!important}
-.ct-app{background:radial-gradient(ellipse at 50% -10%,rgba(101,71,93,.34),transparent 48%),var(--vnn-bg)!important}
-.ct-app .ct-card,.ct-app .ct-week-card,.ct-app .ct-week-main,.ct-app .ct-storage-hero,.ct-app .ct-balance-card,.ct-app .ct-category,.ct-app .ct-v2-overview,.ct-app .ct-v2-picture,.ct-app .ct-v2-weekmini,.ct-app .ct-v2-chart{
-  background-color:var(--vnn-panel);border-color:var(--vnn-line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-}
-.ct-top,.ct-v2-greeting{position:relative;z-index:2}
-.ct-v2-greeting h1{font-family:Georgia,"Times New Roman",serif;font-size:30px;letter-spacing:-.03em}
-.ct-v2-overview{
-  position:relative;overflow:hidden;min-height:235px!important;padding:20px!important;
-  background-image:linear-gradient(90deg,rgba(16,12,20,.96) 0%,rgba(16,12,20,.68) 42%,rgba(16,12,20,.08) 100%),url('./assets/home-scene.webp')!important;
-  background-size:cover!important;background-position:center!important;
-}
-.ct-v2-overview>*{position:relative;z-index:1}
-.ct-v2-overview:after{content:"";position:absolute;inset:auto 0 0;height:44%;background:linear-gradient(transparent,rgba(12,9,16,.84));pointer-events:none}
-.ct-v2-overview .ct-v2-totals{margin-top:44px}
-.ct-v2-picture{min-height:174px!important;border-radius:22px!important;position:relative;overflow:hidden!important;background-size:cover!important;background-position:center!important;color:#fff!important;text-shadow:0 1px 12px #000}
-.ct-v2-picture:before{background:linear-gradient(0deg,rgba(10,8,14,.92),rgba(10,8,14,.2) 70%,transparent)!important}
-.ct-v2-vault{background-image:url('./assets/storage-scene.webp')!important}
-.ct-v2-planpic{background-image:url('./assets/home-scene.webp')!important}
-.ct-v2-jar{background-image:url('./assets/home-scene.webp')!important;background-position:center 72%!important}
-.ct-v2-subart{
-  min-height:150px!important;padding:20px!important;justify-content:flex-start!important;align-items:flex-end!important;
-  background-image:linear-gradient(0deg,rgba(11,8,15,.9),rgba(11,8,15,.08)),url('./assets/expenses-scene.webp')!important;
-  background-size:cover!important;background-position:center!important;color:#fff!important;
-}
-.ct-v2-subart img{display:none!important}
-.ct-v2-plansart{background-image:linear-gradient(0deg,rgba(11,8,15,.9),rgba(11,8,15,.08)),url('./assets/home-scene.webp')!important}
-.ct-v2-weekart{background-image:linear-gradient(0deg,rgba(11,8,15,.9),rgba(11,8,15,.08)),url('./assets/expenses-scene.webp')!important}
-.ct-v2-storage-extra{background-image:linear-gradient(90deg,rgba(27,19,30,.95),rgba(27,19,30,.42)),url('./assets/storage-scene.webp')!important;background-size:cover!important;background-position:center!important}
-.ct-storage-art{background-image:url('./assets/storage-scene.webp')!important;background-size:cover!important;background-position:center!important}
-.ct-v2-nav{background:rgba(28,23,34,.88)!important;border-color:var(--vnn-line)!important}
-.ct-v2-nav .ct-v2-fab{background:linear-gradient(135deg,var(--vnn-peach),var(--vnn-pink))!important;color:#291b29!important}
-.ct-v2-picture em,.ct-v2-picture strong,.ct-v2-picture span{position:relative;z-index:2}

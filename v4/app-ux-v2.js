@@ -19,6 +19,10 @@ const v2Labels = () => lang()==='uk' ? {
   quick:'Быстрые действия', week:'Неделя', open:'Открыть'
 };
 const v2Money = n => fmt(Number.isFinite(n)?n:0);
+const v2Icon = name => {
+  const paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M9 21v-7h6v7"/>',plan:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 9h18m-13 4h3m-3 4h7"/>',add:'<path d="M12 5v14M5 12h14"/>',storage:'<path d="M5 9a7 7 0 0 1 13 3 4 4 0 0 1-1 8H8a5 5 0 0 1-3-9Z"/><path d="M8 9c1-2 3-3 5-3"/>',more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>'};
+  return '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths[name]+'</svg>';
+};
 const v2MonthFigures = () => {
   const weeks = m().weeks.map(week => ({
     week, spent:safe(()=>core.weekSpent(state,week),0),
@@ -29,11 +33,11 @@ const v2MonthFigures = () => {
 };
 const v2OriginalNav=contractNav;
 contractNav=function(){
-  const items=[['home','⌂',tr('home')],['plan','▦',tr('plan')],['add','+',v2Labels().add],['storage','▣',tr('storage')],['more','•••',tr('more')]];
-  return '<nav class="ct-nav ct-v2-nav" aria-label="VNN">'+items.map(([id,icon,label])=>
+  const items=[['home',tr('home')],['plan',tr('plan')],['add',v2Labels().add],['storage',tr('storage')],['more',tr('more')]];
+  return '<nav class="ct-nav ct-v2-nav" aria-label="VNN">'+items.map(([id,label])=>
     '<button type="button" class="ct-nav-item'+(view.tab===id?' active':'')+(id==='add'?' ct-v2-fab':'')+
     '" data-tab="'+id+'" aria-label="'+label+'"'+(view.tab===id?' aria-current="page"':'')+'>'+
-    '<b aria-hidden="true">'+icon+'</b>'+(id==='add'?'':'<span>'+label+'</span>')+'</button>').join('')+'</nav>';
+    '<b aria-hidden="true">'+v2Icon(id)+'</b>'+(id==='add'?'':'<span>'+label+'</span>')+'</button>').join('')+'</nav>';
 };
 contractHome=function(){
   const l=v2Labels(),f=v2MonthFigures(),active=activeWeekFinal();
