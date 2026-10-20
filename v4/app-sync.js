@@ -163,6 +163,62 @@ if (globalThis.navigator?.serviceWorker && globalThis.isSecureContext) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
 }
 
+// Reload the installed PWA in place. Never unregister its worker or erase storage.
+document.addEventListener('click', async event => {
+  const button = event.target.closest('[data-app-update]');
+  if (!button) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if (button.disabled) return;
+  if (sync.dirty || sync.busy || sync.paused || localStorage.getItem(SYNC_DIRTY) === '1') {
+    notify(lang()==='uk'?'Спочатку дочекайся синхронізації змін.':'Сначала дождись синхронизации изменений.');
+    return;
+  }
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  const label = button.querySelector('b');
+  const oldText = button.textContent;
+  if (label) label.textContent = lang()==='uk'?'Перевіряю версію…':'Проверяю версию…';
+  else button.textContent = lang()==='uk'?'Перевіряю версію…':'Проверяю версию…';
+  try {
+    const url = new URL('./index.html', location.href);
+    url.searchParams.set('vnn_check', String(Date.now()));
+    const response = await fetch(url, {cache:'no-store', credentials:'same-origin'});
+    if (!response.ok) throw new Error('offline');
+    const html = await response.text();
+    const build = html.match(/app\.js\?v=([^"'&]+)/)?.[1];
+    if (!build || build === '__BUILD_ID__') throw new Error('release');
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration('./');
+      if (registration) {
+        await registration.update();
+        const installing = registration.installing;
+        if (installing && installing.state !== 'activated') {
+          await Promise.race([
+            new Promise((resolve, reject) => {
+              installing.addEventListener('statechange', () => {
+                if (installing.state === 'activated') resolve();
+                if (installing.state === 'redundant') reject(new Error('install'));
+              });
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000))
+          ]);
+        }
+      }
+    }
+    const next = new URL('./', location.href);
+    next.searchParams.set('vnn_updated', build);
+    next.searchParams.set('t', String(Date.now()));
+    location.replace(next.href);
+  } catch (error) {
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+    if (label) label.textContent = lang()==='uk'?'Оновити версію':'Обновить версию';
+    else button.textContent = oldText;
+    notify(lang()==='uk'?'Не вдалося оновити. Перевір інтернет і спробуй ще раз.':'Не удалось обновить. Проверь интернет и попробуй ещё раз.');
+  }
+}, true);
+
 function cachedSessionActor() {
   try {
     const part = sync.token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
@@ -650,6 +706,7 @@ function authScreen() {
         <button class="ct-auth-submit" type="submit" ${sync.busy?'disabled':''}>Войти <b>→</b></button>
         ${passkeySupported() ? '<button type="button" class="ct-soft" data-auth-passkey>Войти через Face ID</button>' : ''}
       </form>
+      <button type="button" class="ct-soft ct-auth-update" data-app-update>↻ Обновить версию</button>
       ${sync.error ? `<p class="ct-auth-error">${escape(sync.error)}</p>` : ''}
       <div class="ct-auth-family"><span>Нина</span><i>♥</i><span>Вова</span></div>
       <div class="ct-auth-note">Один бюджет на нашу новую главу ♡</div>

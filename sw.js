@@ -5,6 +5,7 @@ const SHELL = ['./', './index.html', './app.js?v=__BUILD_ID__',
   './core.js', './corefix.js', './manifest.webmanifest',
   './assets/vnn-icon.svg', './assets/vnn-icon-180.png',
   './assets/vnn-icon-192.png', './assets/vnn-icon-512.png',
+  './assets/scene/home.webp',
   './assets/final-dark-hero.b64', './assets/final-light-home.b64',
   './assets/storage-approved.b64', './assets/week-empty-approved.b64'];
 self.addEventListener('install', event => {

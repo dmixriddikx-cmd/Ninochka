@@ -8,6 +8,7 @@ const app = { innerHTML: '' };
 const toast = { textContent: '', hidden: true };
 const modal = { open: false, innerHTML: '', querySelector: () => null, showModal(){ this.open = true; }, close(){ this.open = false; } };
 const cssVariables = new Map();
+const clickHandlers = [];
 const root = { dataset: {}, style: { setProperty(key, value){ cssVariables.set(key, value); } }, setAttribute(){}, lang: 'ru' };
 
 globalThis.localStorage = new Map();
@@ -24,10 +25,13 @@ globalThis.document = {
   },
   querySelectorAll(){ return []; },
   createElement(){ return { className: '', innerHTML: '', remove(){} }; },
-  addEventListener(){}
+  addEventListener(type, handler){ if (type === 'click') clickHandlers.push(handler); }
 };
 globalThis.matchMedia = () => ({ matches: true, addEventListener(){} });
 globalThis.fetch = async input => {
+  if (String(input).includes('vnn_check=')) return {
+    ok:true, text:async()=>'<script type="module" src="./app.js?v=new-release"></script>'
+  };
   const relative = String(input).replace(/^\.\/assets\//, '');
   const asset = path.join(site, 'assets', relative);
   if (fs.existsSync(asset)) return { ok: true, text: async () => fs.readFileSync(asset, 'utf8') };
@@ -39,6 +43,7 @@ await new Promise(resolve => setTimeout(resolve, 0));
 
 if (!app.innerHTML.includes('ct-auth-shell')) throw new Error('UI runtime failed to render the authentication gate');
 if (!app.innerHTML.includes('data-auth-form')) throw new Error('UI runtime authentication form is missing');
+if (!app.innerHTML.includes('data-app-update')) throw new Error('UI runtime version update is missing on the login screen');
 if (app.innerHTML.includes('ct-home-hero') || app.innerHTML.includes('ct-balance-card')) throw new Error('budget content leaked before authentication');
 for (const leakedKey of ['storageTab', 'currentWeek', 'currencyRates']) {
   if (app.innerHTML.includes(leakedKey)) throw new Error(`UI runtime exposed an untranslated label: ${leakedKey}`);
@@ -47,5 +52,27 @@ if (root.dataset.theme !== 'dark') throw new Error('fresh installation must open
 for (const key of ['--approved-dark-hero', '--approved-light-home', '--ct-storage-art', '--ct-week-empty']) {
   if (!cssVariables.get(key)?.startsWith('url(')) throw new Error(`UI runtime did not decode ${key}`);
 }
+
+// An installed shortcut must refresh in place without clearing locally stored data.
+const update = clickHandlers.find(handler => handler.toString().includes("'[data-app-update]'"));
+if (!update) throw new Error('UI runtime version update handler is missing');
+let destination = '';
+globalThis.location = { href:'https://example.test/Ninochka/', replace(url){ destination = url; } };
+localStorage.setItem('budget-sentinel','keep-me');
+const button = () => ({
+  disabled:false, textContent:'↻ Обновить версию',
+  setAttribute(){}, removeAttribute(){}, querySelector(){ return null; }
+});
+const click = node => ({
+  target:{ closest(selector){ return selector === '[data-app-update]' ? node : null; } },
+  preventDefault(){}, stopImmediatePropagation(){}
+});
+await update(click(button()));
+if (!destination.includes('vnn_updated=new-release')) throw new Error('UI runtime did not reload the installed app');
+if (localStorage.getItem('budget-sentinel') !== 'keep-me') throw new Error('UI runtime erased local data on update');
+destination = '';
+localStorage.setItem('ninochka-sync-dirty','1');
+await update(click(button()));
+if (destination) throw new Error('UI runtime updated while local sync was pending');
 
 console.log('UI runtime smoke PASS');
