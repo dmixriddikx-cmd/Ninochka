@@ -183,3 +183,77 @@ linear-gradient(180deg,rgba(20,12,20,.24),rgba(20,12,20,.48)),var(--approved-dar
 :root[data-theme="dark"] .ct-guide-shot,:root[data-theme="dark"] .ct-guide-modal,:root[data-theme="dark"] .ct-guide-modal label,:root[data-theme="dark"] .ct-guide-balance,:root[data-theme="dark"] .ct-guide-options span{background:var(--ct-card2);border-color:var(--ct-line)}
 
 @media(prefers-reduced-motion:reduce){.ct-app::before,.ct-auth-restoring-mark{animation:none!important;transition:none!important}}
+
+/* Mobile viewport correction: the onboarding must fit the real iOS viewport.
+   The previous svh + min-height combination could exceed the viewport once
+   the safe-area inset and sheet overlap were added. */
+.ct-onboarding{
+  height:100dvh;
+  min-height:100dvh;
+  max-height:100dvh;
+  overflow:hidden;
+  box-sizing:border-box;
+}
+.ct-onboarding-art{
+  flex:0 0 clamp(228px,34dvh,300px);
+  height:auto!important;
+  min-height:0!important;
+  border-radius:0 0 30px 30px;
+  background-size:cover;
+  background-position:center;
+}
+.ct-onboarding-sheet,
+.ct-onboarding-sheet-guide{
+  flex:1 1 auto;
+  min-height:0!important;
+  height:auto!important;
+  margin-top:-18px;
+  overflow:hidden;
+  padding:18px 22px max(14px,env(safe-area-inset-bottom));
+}
+.ct-onboarding-sheet h1{font-size:24px;line-height:1.08;margin:10px 0 8px}
+.ct-onboarding-sheet p{font-size:13px;line-height:1.35}
+.ct-onboarding-sheet-guide h1{font-size:21px;margin:7px 0 5px}
+.ct-onboarding-sheet-guide>p{font-size:12px;line-height:1.3}
+.ct-onboarding-copy,
+.ct-onboarding-sheet>h1,
+.ct-onboarding-sheet>p{flex:0 0 auto}
+.ct-guide-shot{flex:0 1 auto;max-height:31dvh;overflow:hidden;margin:8px auto 8px;padding:8px}
+.ct-guide-shot p{font-size:10px!important;line-height:1.25!important;margin-top:6px!important}
+.ct-onboarding-dots{flex:0 0 auto;margin:6px 0 9px}
+.ct-onboarding-sheet .ct-primary{flex:0 0 48px;min-height:48px}
+@media(max-width:390px){
+  .ct-onboarding-art{flex-basis:clamp(214px,32dvh,276px)}
+  .ct-onboarding-sheet,.ct-onboarding-sheet-guide{padding-left:18px;padding-right:18px}
+  .ct-onboarding-sheet h1{font-size:22px}
+  .ct-onboarding-sheet p{font-size:12px}
+  .ct-guide-shot{max-width:300px}
+}
+
+/* SourcePack thread system: a second, quieter pass gives the cards the
+   requested depth variation while keeping all financial UI above it. */
+.ct-app::after{
+  content:"";
+  position:absolute;
+  inset:88px -135px 84px -135px;
+  z-index:0;
+  pointer-events:none;
+  user-select:none;
+  background:url('./assets/family-threads-dark.svg') center 42%/540px 250px repeat-y;
+  opacity:calc(var(--ct-thread-opacity) * .42);
+  transform:scaleX(-1);
+  mix-blend-mode:screen;
+}
+:root[data-theme="light"] .ct-app::after{
+  background-image:url('./assets/family-threads-light.svg');
+  mix-blend-mode:multiply;
+}
+.ct-home-hero,.ct-balance-card,.ct-week-card,.ct-storage-hero,.ct-card{
+  background-image:
+    radial-gradient(circle at 84% 14%,color-mix(in srgb,var(--ct-pink) 7%,transparent),transparent 27%),
+    radial-gradient(circle at 12% 92%,color-mix(in srgb,var(--ct-muted) 5%,transparent),transparent 30%);
+}
+.ct-home-hero,.ct-balance-card,.ct-week-card,.ct-storage-hero,.ct-card,.ct-category{
+  position:relative;
+  z-index:1;
+}
