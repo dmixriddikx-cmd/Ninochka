@@ -110,3 +110,71 @@ html,body{background:var(--ct-bg)!important}
 :root[data-theme="light"] .ct-v2-nav .ct-nav-item.active{color:#945c75;background:rgba(170,114,138,.12)}
 @media(max-width:360px){.ct-v2-overview.ct-card{min-height:390px!important}.ct-v2-picture{min-height:150px}.ct-v2-picture strong{font-size:13px}.ct-storage-art{height:275px!important}}
 @media(prefers-reduced-motion:reduce){.ct-v2-progress>span{transition:none}}
+
+/* The Home illustration is the opening scene, shared by the header and the
+   financial overlay. Keep every figure as live text above the illustration. */
+.ct-app.ct-view-home{
+  background-color:var(--ct-bg)!important;
+  background-image:linear-gradient(180deg,transparent 0,transparent 360px,var(--ct-bg) 640px),url('./assets/scene/home.webp')!important;
+  background-position:center top,center top!important;
+  background-size:100% 650px,100% auto!important;
+  background-repeat:no-repeat!important;
+}
+.ct-view-home::before{top:640px!important}
+.ct-view-home .ct-top{background:transparent!important}
+.ct-view-home .ct-v2-greeting{color:#fff7f2;text-shadow:0 2px 12px #171019}
+.ct-view-home .ct-v2-greeting small{color:#f4c8b7}
+.ct-view-home .ct-v2-overview.ct-card{
+  min-height:440px!important;margin:0 -4px 0;padding:14px!important;
+  border:0!important;background:transparent!important;box-shadow:none!important;
+}
+.ct-view-home .ct-v2-overview::before{display:none}
+.ct-view-home .ct-v2-heading{margin-top:auto;margin-bottom:8px;
+  padding:11px 15px;border-radius:18px;background:rgba(24,21,27,.76);
+  border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(14px)}
+.ct-view-home .ct-v2-heading h2{font-size:19px}
+.ct-view-home .ct-v2-totals{margin:0!important;background:rgba(24,21,27,.89)}
+.ct-view-home .ct-v2-progress,.ct-view-home .ct-v2-subtitle{margin-left:16px;margin-right:16px}
+.ct-view-home .ct-v2-subtitle{margin-bottom:5px}
+.ct-v2-picture{background-repeat:no-repeat}
+.ct-v2-picture:focus-visible,.ct-v2-weekmini:focus-visible,.ct-nav-item:focus-visible{
+  outline:2px solid #ffc7a5;outline-offset:3px}
+
+/* Savings keeps the piggy-bank scene continuous behind the balance/actions. */
+.ct-storage-hero{
+  min-height:570px!important;display:flex;flex-direction:column;justify-content:flex-end;
+  background:#211b21 url('./assets/scene/storage.webp') center 43%/cover no-repeat!important;
+}
+.ct-storage-art{display:none!important}
+.ct-storage-balance{margin:0 15px 8px;padding:17px!important;border-radius:21px;
+  background:rgba(25,21,27,.86);border:1px solid rgba(255,255,255,.18);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.ct-storage-balance small,.ct-storage-balance span{color:#e9d4cf!important}
+.ct-storage-balance strong{color:#fff8f2}
+.ct-storage-actions{padding:0 15px 17px!important}
+.ct-storage-actions .ct-soft{background:rgba(31,29,38,.94);color:#fff8f2}
+
+/* The expense cat remains a scene above the real spending data. */
+.ct-v2-weekart{min-height:275px!important;background-position:center 28%!important}
+.ct-week-main,.ct-v2-chart,.ct-rate-card{border-color:var(--ct-line);background:var(--ct-card)!important}
+.ct-expense-row{min-height:67px;grid-template-columns:44px minmax(0,1fr) auto 12px!important}
+.ct-expense-row i{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;
+  background:color-mix(in srgb,var(--ct-card2) 70%,#e3a18e)}
+.ct-expense-row i svg{width:23px;height:23px}
+.ct-expense-row span b{font-size:14px}
+.ct-expense-row span small{font-size:11px;line-height:1.3}
+.ct-expense-row>strong{font-size:14px!important}
+.ct-v2-plansart{min-height:245px!important}
+.ct-more-page::before{height:220px;background-position:center 42%}
+.ct-v2-add-icon svg{width:24px;height:24px}
+
+@media(max-width:390px){
+  .ct-app.ct-view-home{background-size:100% 620px,auto 610px!important}
+  .ct-view-home .ct-v2-overview.ct-card{min-height:410px!important}
+  .ct-storage-hero{min-height:530px!important}
+  .ct-expense-row{grid-template-columns:40px minmax(0,1fr) auto 10px!important;gap:7px}
+  .ct-expense-row i{width:39px;height:39px}
+}
+:root[data-theme="light"] .ct-view-home .ct-v2-greeting,
+:root[data-theme="light"] .ct-view-home .ct-v2-heading,
+:root[data-theme="light"] .ct-view-home .ct-v2-totals{color:#fff8f2}
