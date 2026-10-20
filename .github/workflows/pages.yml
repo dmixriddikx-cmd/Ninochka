@@ -46,6 +46,9 @@ jobs:
           cp core.js corefix.js sync-config.js _site/
           cat contract.css v2.css > _site/contract.css
           cp -r assets/* _site/assets/
+          for scene in home-scene expenses-scene storage-scene; do
+            base64 -d "_site/assets/${scene}.b64" > "_site/assets/${scene}.webp"
+          done
           cp manifest.webmanifest refresh.html _site/
           python -m pip install --disable-pip-version-check --quiet 'CairoSVG==2.8.2'
           python scripts/build-vnn-icons.py _site
