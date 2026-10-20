@@ -185,3 +185,34 @@ html,body{background:var(--ct-bg)!important}
 :root[data-theme="light"] .ct-view-home .ct-v2-greeting,
 :root[data-theme="light"] .ct-view-home .ct-v2-heading,
 :root[data-theme="light"] .ct-view-home .ct-v2-totals{color:#fff8f2}
+
+/* Five invisible, equal navigation cells. Only the icons remain visible. */
+.ct-nav.ct-v2-nav{
+  position:fixed!important;z-index:50;left:50%!important;right:auto!important;
+  bottom:max(10px,env(safe-area-inset-bottom))!important;
+  transform:translateX(-50%)!important;
+  width:min(calc(100% - 28px),430px)!important;height:64px!important;
+  display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:0!important;padding:0!important;margin:0!important;
+  background:transparent!important;border:0!important;border-radius:0!important;
+  box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+.ct-nav.ct-v2-nav .ct-nav-item,
+.ct-nav.ct-v2-nav .ct-nav-item.active,
+.ct-nav.ct-v2-nav .ct-v2-fab{
+  width:100%!important;height:64px!important;min-height:64px!important;
+  display:grid!important;place-items:center!important;align-self:center!important;justify-self:center!important;
+  padding:0!important;margin:0!important;transform:none!important;
+  background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;
+}
+.ct-nav.ct-v2-nav .ct-nav-item span{display:none!important}
+.ct-nav.ct-v2-nav .ct-nav-item b{width:36px;height:36px;display:grid;place-items:center}
+.ct-nav.ct-v2-nav .ct-nav-item b svg{width:20px;height:20px;stroke-width:1.9}
+.ct-nav.ct-v2-nav .ct-v2-fab b svg{width:23px;height:23px;stroke-width:2.1}
+.ct-nav.ct-v2-nav .ct-nav-item{color:#c3b6c0!important}
+.ct-nav.ct-v2-nav .ct-nav-item.active,
+.ct-nav.ct-v2-nav .ct-v2-fab{color:#f4ba99!important}
+:root[data-theme="light"] .ct-nav.ct-v2-nav{background:transparent!important}
+:root[data-theme="light"] .ct-nav.ct-v2-nav .ct-nav-item{color:#6f6170!important}
+:root[data-theme="light"] .ct-nav.ct-v2-nav .ct-nav-item.active,
+:root[data-theme="light"] .ct-nav.ct-v2-nav .ct-v2-fab{color:#915774!important}
