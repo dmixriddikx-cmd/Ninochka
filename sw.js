@@ -8,8 +8,8 @@ const SHELL = ['./', './index.html', './app.js?v=__BUILD_ID__',
   './assets/final-dark-hero.b64', './assets/final-light-home.b64',
   './assets/storage-approved.b64', './assets/week-empty-approved.b64'];
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
-  // No skipWaiting: existing tabs finish on their current application version.
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  // Public shell only: activate a fully downloaded release without waiting for stale Safari tabs.
 });
 self.addEventListener('activate', event => {
   event.waitUntil(caches.keys().then(keys => Promise.all(keys
