@@ -15,9 +15,163 @@ const sync = {
   paused: false,
   error: '',
   actor: '',
-  dirty: localStorage.getItem(SYNC_DIRTY) === '1'
+  dirty: localStorage.getItem(SYNC_DIRTY) === '1',
+  writeProtocol: 0
 };
 const saveLocalOnly = save;
+
+const PASSKEY_API = SYNC_API + '/api/passkeys';
+function passkeySupported() {
+  return Boolean(globalThis.isSecureContext && globalThis.PublicKeyCredential &&
+    navigator.credentials?.create && navigator.credentials?.get);
+}
+function passkeyBytes(encoded) {
+  const raw = String(encoded).replace(/-/g,'+').replace(/_/g,'/');
+  const binary = atob(raw + '='.repeat((4-raw.length%4)%4));
+  return Uint8Array.from(binary, x=>x.charCodeAt(0));
+}
+function passkeyBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let text = '';
+  for (let i = 0; i < bytes.length; i++) text += String.fromCharCode(bytes[i]);
+  return btoa(text).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function passkeyRequest(action, payload = {}, authenticated = false) {
+  const headers = { 'Content-Type':'application/json' };
+  if (authenticated && sync.token) headers.Authorization = 'Bearer ' + sync.token;
+  const response = await fetch(PASSKEY_API, { method:'POST', headers,
+    body:JSON.stringify({action,...payload}), cache:'no-store' });
+  const body = await response.json().catch(()=>({}));
+  if (!response.ok) {
+    const problem = body.error === 'recent_password_confirmation_required'
+      ? 'Введи действующий пароль от VNN для подтверждения.'
+      : body.error === 'passkey_limit_reached' ? 'Лимит ключей доступа достигнут.'
+      : body.error === 'passkey_challenge_replayed' ? 'Попробуй снова: запрос уже использован.'
+      : 'Face ID сейчас недоступен. Можно войти обычным паролем.';
+    const error = new Error(problem);
+    error.status = response.status;
+    throw error;
+  }
+  return body;
+}
+function serializePasskey(credential, registration) {
+  const response=credential.response;
+  return {id:credential.id,type:credential.type,rawId:passkeyBase64(credential.rawId),
+    response:{clientDataJSON:passkeyBase64(response.clientDataJSON),
+      ...(registration?{attestationObject:passkeyBase64(response.attestationObject)}:
+      {authenticatorData:passkeyBase64(response.authenticatorData),
+        signature:passkeyBase64(response.signature),
+        userHandle:response.userHandle?passkeyBase64(response.userHandle):null})}};
+}
+async function registerFamilyPasskey() {
+  if (!passkeySupported() || !sync.connected || sync.busy || sync.paused) return;
+  const field=document.querySelector('[data-passkey-pin]');
+  const pin=field?.value || '';
+  if(field)field.value='';
+  if(!pin)return notify('Введи текущий пароль VNN один раз для настройки Face ID.');
+  sync.busy=true;
+  try {
+    const options=await passkeyRequest('register-options',
+      {login:sync.actor==='nina'?'Нина':'Вова',pin},true);
+    const publicKey=options.publicKey;
+    publicKey.challenge=passkeyBytes(publicKey.challenge);
+    publicKey.user.id=passkeyBytes(publicKey.user.id);
+    publicKey.excludeCredentials=(publicKey.excludeCredentials||[]).map(x=>({...x,id:passkeyBytes(x.id)}));
+    const credential=await navigator.credentials.create({publicKey});
+    if(!credential)throw new Error('Настройка отменена.');
+    await passkeyRequest('register-finish',
+      {challenge:options.publicKey.challenge instanceof Uint8Array ?
+        passkeyBase64(publicKey.challenge) : options.publicKey.challenge,
+        credential:serializePasskey(credential,true)},true);
+    notify('Ключ доступа сохранён. Теперь можно входить через Face ID.');
+  } catch(error) {
+    notify(error?.name==='NotAllowedError'?'Настройка Face ID отменена.':
+      error?.message || 'Не удалось включить Face ID.');
+  } finally {
+    sync.busy=false;
+    render();
+  }
+}
+
+async function manageFamilyPasskeys() {
+  if (!sync.connected || sync.busy || !passkeySupported()) return;
+  try {
+    const result=await passkeyRequest('passkey-list',{},true);
+    const items=result.items||[];
+    const rows=items.length?items.map(item=>
+      '<div class="ct-sync-actions" style="margin:8px 0"><span class="ct-profile-note">Ключ '+escape(item.id.slice(0,8))+'…</span> <button class="ct-soft" type="button" data-passkey-remove="'+escape(item.id)+'">Удалить</button></div>'
+    ).join(''):'<p class="note">Пока нет сохранённых ключей доступа.</p>';
+    showModal('Ключи Face ID', '<p class="note">Удаление требует текущего пароля VNN. Другую учётную запись это не затронет.</p>'+
+      rows+'<label class="field"><span>Текущий пароль для удаления ключа</span><input class="ct-sync-input" type="password" autocomplete="current-password" data-passkey-revoke-pin placeholder="Пароль VNN"></label>');
+  }catch(error){notify(error?.message||'Не удалось получить список ключей.');}
+}
+async function revokeFamilyPasskey(id) {
+  if (!sync.connected || sync.busy || !confirm('Удалить этот ключ доступа? Для следующего входа понадобится пароль или другой ключ.'))return;
+  const field=modal.querySelector('[data-passkey-revoke-pin]');
+  const pin=field?.value||'';
+  if(field)field.value='';
+  if(!pin)return notify('Введи пароль VNN для удаления ключа.');
+  sync.busy=true;
+  try{
+    await passkeyRequest('passkey-revoke',{id,pin,login:sync.actor==='nina'?'Нина':'Вова'},true);
+    notify('Ключ удалён из VNN.');
+    sync.busy=false;
+    await manageFamilyPasskeys();
+  }catch(error){notify(error?.message||'Не удалось удалить ключ.');}
+  finally{sync.busy=false;}
+}
+
+async function loginWithPasskey() {
+  if(!passkeySupported() || sync.busy)return;
+  sync.busy=true;
+  sync.error='';
+  render();
+  try{
+    const options=await passkeyRequest('login-options');
+    const publicKey=options.publicKey;
+    const challenge=publicKey.challenge;
+    publicKey.challenge=passkeyBytes(challenge);
+    const credential=await navigator.credentials.get({publicKey});
+    if(!credential)throw new Error('Вход отменён.');
+    const session=await passkeyRequest('login-finish',
+      {challenge,credential:serializePasskey(credential,false)});
+    await connectSync(session.actor==='nina'?'Нина':'Вова','',false,session);
+  }catch(error){
+    sync.error=error?.name==='NotAllowedError'?'Вход отменён.':
+      error?.message || 'Не удалось войти через Face ID.';
+  }finally{
+    sync.busy=false;
+    render();
+  }
+}
+document.addEventListener('click', event=>{
+  const register=event.target.closest('[data-passkey-register]');
+  const login=event.target.closest('[data-auth-passkey]');
+  const manage=event.target.closest('[data-passkey-manage]');
+  const remove=event.target.closest('[data-passkey-remove]');
+  if(!register&&!login&&!manage&&!remove)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if(register)registerFamilyPasskey();
+  else if(login)loginWithPasskey();
+  else if(manage)manageFamilyPasskeys();
+  else if(remove)revokeFamilyPasskey(remove.dataset.passkeyRemove);
+},true);
+
+
+if (globalThis.navigator?.serviceWorker && globalThis.isSecureContext) {
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
+}
+
+function cachedSessionActor() {
+  try {
+    const part = sync.token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
+    const claim = JSON.parse(atob(part));
+    return ['nina', 'volodymyr'].includes(claim.actor) &&
+      (!claim.purpose || claim.purpose === 'session') && claim.expiresAt > Date.now()
+      ? claim.actor : null;
+  } catch { return null; }
+}
 
 function syncActorName() {
   return sync.actor === 'volodymyr' ? 'Вова' : 'Нина';
@@ -38,7 +192,7 @@ function syncPanel() {
         : sync.busy || sync.dirty
           ? 'Сохраняем изменения…'
           : `Общий бюджет подключён · ${syncActorName()}`;
-    return `<p class="ct-profile-note">${status}</p><div class="ct-sync-actions"><button class="ct-soft" data-sync="refresh">Обновить</button><button class="ct-soft" data-sync="backup">Скачать копию</button><button class="ct-soft" data-sync="logout">Выйти</button>${sync.paused ? '<button class="ct-soft" data-sync="use-remote">Открыть свежую общую версию</button>' : ''}</div>`;
+    return `<p class="ct-profile-note">${status}</p><div class="ct-sync-actions"><button class="ct-soft" data-sync="refresh">Обновить</button><button class="ct-soft" data-sync="backup">Скачать копию</button><button class="ct-soft" data-sync="logout">Выйти</button>${sync.paused ? '<button class="ct-soft" data-sync="use-remote">Открыть свежую общую версию</button>' : ''}</div>` + (passkeySupported() ? `<section class="ct-card" style="margin-top:16px;padding:16px"><strong>Вход через Face ID</strong><p class="ct-profile-note">Бесплатный ключ доступа Apple. Подтверди свой пароль VNN один раз — он не сохраняется.</p><label class="field"><span>Текущий пароль VNN</span><input class="ct-sync-input" type="password" autocomplete="current-password" data-passkey-pin placeholder="Пароль"></label><button class="ct-soft" type="button" data-passkey-register>Подключить Face ID</button> <button class="ct-soft" type="button" data-passkey-manage>Мои ключи</button></section>` : '');
   }
 
   return `<p class="ct-profile-note">Нина и Вова видят один бюджет. Войди под своим именем — новые записи автоматически получат автора.</p><label class="field"><span>Логин</span><input class="ct-sync-input" type="text" autocomplete="username" data-sync-login value="${escape(sync.login)}" placeholder="Нина или Вова"></label><label class="field"><span>Пароль</span><input class="ct-sync-input" type="password" autocomplete="current-password" data-sync-pin placeholder="Пароль"></label><button class="ct-primary ct-full" data-sync="connect">Войти</button>${sync.error ? `<p class="ct-sync-error">${escape(sync.error)}</p>` : ''}`;
@@ -61,6 +215,7 @@ globalThis.NinochkaSync = {
 
 async function syncRequest(method, body, authenticated = true) {
   const headers = body ? { 'Content-Type': 'application/json' } : {};
+  if (method === 'PUT' && sync.writeProtocol === 2) headers['X-VNN-Write-Protocol'] = '2';
   if (authenticated && sync.token) headers.Authorization = `Bearer ${sync.token}`;
 
   const response = await fetch(`${SYNC_API}/api/sync`, {
@@ -70,10 +225,13 @@ async function syncRequest(method, body, authenticated = true) {
     cache: 'no-store'
   });
   const result = await response.json().catch(() => ({}));
+  if (method === 'GET' && response.ok) sync.writeProtocol = result.writeProtocol === 2 ? 2 : 0;
   if (response.status === 409) return { conflict: true, ...result };
   if (!response.ok) {
     const message = response.status === 401
       ? (authenticated ? 'Сессия закончилась. Войди снова.' : 'Неверный логин или пароль.')
+      : response.status === 426
+        ? 'Обнови VNN перед отправкой изменений. Местная копия сохранена.'
       : response.status === 503
         ? 'Общий бюджет занят или временно недоступен. Изменения остаются на этом устройстве.'
         : 'Не удалось связаться с общим бюджетом.';
@@ -88,10 +246,33 @@ function adoptRemote(data) {
   const preferences = { ...state.preferences };
   state = core.migrate(data);
   state.preferences = { ...state.preferences, ...preferences, actor: sync.actor };
+  const calendarChanged = needsCalendarRollover(state);
   core.ensureCurrentMonth(state);
-  saveLocalOnly();
+  if (calendarChanged) save(); else saveLocalOnly();
   view.week = firstOpenWeekId();
   render();
+}
+
+function needsCalendarRollover(data) {
+  const current = core.nowMonth();
+  return !data.months.some(month => month.id === current) ||
+    data.months.some(month => month.id < current && month.status !== 'closed');
+}
+
+function advanceLocalCalendar() {
+  if (!sync.connected || sync.busy || sync.paused || !needsCalendarRollover(state)) return false;
+  try {
+    const draft = structuredClone(state);
+    core.ensureCurrentMonth(draft);
+    state = draft;
+    save();
+    render();
+    return true;
+  } catch {
+    sync.error = 'Для завершения месяца проверь курсы валют.';
+    render();
+    return true;
+  }
 }
 
 function backupLocal(content = localStorage.getItem(STORE)) {
@@ -99,7 +280,7 @@ function backupLocal(content = localStorage.getItem(STORE)) {
   const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `ninochka-local-${new Date().toISOString().slice(0,10)}.json`;
+  link.download = `vnn-next-local-${new Date().toISOString().slice(0,10)}.json`;
   document.body.append(link);
   link.click();
   link.remove();
@@ -156,7 +337,7 @@ async function resetTestData(skipConfirmation = false) {
   }
 
   const before = localStorage.getItem(STORE) || '';
-  localStorage.setItem(`ninochka-before-reset-${Date.now()}`, before);
+  localStorage.setItem(`vnn-next-before-reset-${Date.now()}`, before);
 
   state = zeroBudget();
   view.week = 1;
@@ -218,27 +399,30 @@ async function resetTestData(skipConfirmation = false) {
 }
 function clearSyncSession(message = '') {
   sync.token = '';
-  sync.rev = null;
+  if (sync.dirty) {
+    localStorage.setItem(`vnn-next-unsent-${Date.now()}`, localStorage.getItem(STORE) || '');
+  } else {
+    sync.rev = null;
+    localStorage.removeItem(SYNC_REV);
+  }
   sync.connected = false;
   sync.staged = null;
   sync.paused = false;
   sync.busy = false;
-  sync.dirty = false;
+  // Keep the unsent copy and its base revision for a safe retry after login.
   sync.actor = '';
   sync.error = message;
   localStorage.removeItem(SYNC_TOKEN);
-  localStorage.removeItem(SYNC_REV);
   localStorage.removeItem(SYNC_READY);
-  localStorage.removeItem(SYNC_DIRTY);
 }
 
-async function connectSync(login = '', pin = '', restoring = false) {
+async function connectSync(login = '', pin = '', restoring = false, authenticated = null) {
   if (!SYNC_API) return;
   sync.error = '';
 
   try {
     if (!restoring) {
-      const auth = await syncRequest('POST', { action: 'login', login: login.trim(), pin }, false);
+      const auth = authenticated || await syncRequest('POST', { action: 'login', login: login.trim(), pin }, false);
       sync.token = auth.token;
       sync.actor = auth.actor;
       sync.login = login.trim();
@@ -249,32 +433,42 @@ async function connectSync(login = '', pin = '', restoring = false) {
     const remote = await syncRequest('GET');
     sync.actor = remote.actor;
     sync.connected = true;
-    sync.rev = remote.rev;
+    const unsentBase = sync.rev;
+    if (!sync.dirty) sync.rev = remote.rev;
     sync.staged = null;
     sync.paused = false;
     localStorage.setItem(SYNC_READY, '1');
     localStorage.setItem(SYNC_REV, String(sync.rev ?? 0));
     state.preferences.actor = sync.actor;
 
-    if (!restoring && !localStorage.getItem(`ninochka-onboarding-${sync.actor}`)) {
+    if (!restoring && !localStorage.getItem(`vnn-next-onboarding-${sync.actor}`)) {
       state.preferences.onboardingSeen = false;
     }
 
     if (sync.dirty) {
-      queueSync();
+      if (Number(unsentBase || 0) !== Number(remote.rev)) {
+        sync.paused = true;
+        sync.error = 'Конфликт версий';
+      } else queueSync();
     } else if (remote.data) {
       adoptRemote(remote.data);
     } else {
-      sync.dirty = true;
-      localStorage.setItem(SYNC_DIRTY, '1');
+      // A missing cloud document is not permission to upload an old local
+      // export. Keep it for recovery until the family record is verified.
+      sync.paused = true;
+      sync.error = 'Общий бюджет не найден. Местная копия сохранена; запись остановлена.';
       saveLocalOnly();
-      queueSync();
     }
   } catch (error) {
     if (restoring && error.status === 401) clearSyncSession('Сессия закончилась. Войди снова.');
     else {
       sync.error = error.message || 'Не удалось подключиться.';
-      sync.connected = false;
+      // A previously authenticated installation may reopen its local recovery
+      // copy offline. Server authentication still gates every cloud operation.
+      const cachedActor = restoring && (!error.status || error.status === 503) &&
+        localStorage.getItem(SYNC_READY) === '1' && cachedSessionActor();
+      sync.connected = Boolean(cachedActor);
+      if (cachedActor) sync.actor = cachedActor;
     }
   } finally {
     if (restoring) authRestorePending = false;
@@ -284,8 +478,8 @@ async function connectSync(login = '', pin = '', restoring = false) {
 
 function activateSync() {
   if (!sync.staged) return;
-  if (!localStorage.getItem('ninochka-before-shared')) {
-    localStorage.setItem('ninochka-before-shared', localStorage.getItem(STORE) || '');
+  if (!localStorage.getItem('vnn-next-before-shared')) {
+    localStorage.setItem('vnn-next-before-shared', localStorage.getItem(STORE) || '');
   }
 
   localStorage.setItem(SYNC_TOKEN, sync.token);
@@ -303,10 +497,9 @@ function activateSync() {
     sync.dirty = false;
     adoptRemote(sync.staged.data);
   } else {
-    sync.dirty = true;
-    localStorage.setItem(SYNC_DIRTY, '1');
+    sync.paused = true;
+    sync.error = 'Общий бюджет не найден. Местная копия сохранена; запись остановлена.';
     saveLocalOnly();
-    queueSync();
   }
 
   sync.staged = null;
@@ -314,6 +507,7 @@ function activateSync() {
 }
 
 let syncAgain = false;
+let syncLocalVersion = 0;
 async function queueSync() {
   if (!sync.connected || sync.paused || !SYNC_API) return;
   if (sync.busy) {
@@ -363,6 +557,7 @@ async function queueSync() {
 }
 
 save = function () {
+  syncLocalVersion++;
   saveLocalOnly();
   if (sync.connected) {
     sync.dirty = true;
@@ -373,10 +568,14 @@ save = function () {
 
 async function refreshSync() {
   if (!sync.connected || sync.busy || sync.paused) return;
+  if (advanceLocalCalendar()) return;
   if (sync.dirty) return queueSync();
 
   try {
+    const baseRev = sync.rev;
+    const localVersion = syncLocalVersion;
     const remote = await syncRequest('GET');
+    if (sync.dirty || sync.busy || sync.paused || syncLocalVersion !== localVersion || sync.rev !== baseRev) return;
     sync.error = '';
     if (Number(remote.rev) !== Number(sync.rev)) {
       sync.rev = remote.rev;
@@ -414,7 +613,7 @@ document.addEventListener('click', event => {
   }
   if (action === 'use-remote') {
     if (!confirm('Местные изменения ещё не попали в общий бюджет. Скачай копию перед переходом. Открыть общую версию?')) return;
-    localStorage.setItem(`ninochka-conflict-${Date.now()}`, localStorage.getItem(STORE) || '');
+    localStorage.setItem(`vnn-next-conflict-${Date.now()}`, localStorage.getItem(STORE) || '');
     backupLocal();
     sync.paused = false;
     sync.dirty = false;
@@ -441,7 +640,7 @@ function authScreen() {
   return `<main class="ct-auth-shell">
     <section class="ct-auth-card">
       <div class="ct-auth-brand">
-        <div class="ct-auth-title">Ниночка <span>♡</span></div>
+        <div class="ct-auth-title">VNN <span>♡</span></div>
         <div class="ct-auth-subtitle">СЕМЕЙНЫЙ БЮДЖЕТ</div>
         <div class="ct-auth-motto">Наш дом <i>•</i> Наши планы <i>•</i> Вместе</div>
       </div>
@@ -449,6 +648,7 @@ function authScreen() {
         <label><span>♡</span><input type="text" autocomplete="username" data-sync-login value="${remembered}" placeholder="Логин" required></label>
         <label><span>⌑</span><input type="password" autocomplete="current-password" data-sync-pin placeholder="Пароль" required><button type="button" class="ct-auth-eye" data-auth-eye aria-label="Показать пароль">◉</button></label>
         <button class="ct-auth-submit" type="submit" ${sync.busy?'disabled':''}>Войти <b>→</b></button>
+        ${passkeySupported() ? '<button type="button" class="ct-soft" data-auth-passkey>Войти через Face ID</button>' : ''}
       </form>
       ${sync.error ? `<p class="ct-auth-error">${escape(sync.error)}</p>` : ''}
       <div class="ct-auth-family"><span>Нина</span><i>♥</i><span>Вова</span></div>
@@ -459,12 +659,13 @@ function authScreen() {
 
 let authRestorePending = Boolean(SYNC_API && sync.token && localStorage.getItem(SYNC_READY) === '1');
 function authRestoreScreen(){
-  return '<main class="ct-auth-shell ct-auth-restoring" aria-busy="true"><section class="ct-auth-card"><div class="ct-auth-brand"><div class="ct-auth-title">Ниночка <span>♡</span></div><div class="ct-auth-subtitle">СЕМЕЙНЫЙ БЮДЖЕТ</div></div><div class="ct-auth-restoring-mark">♡</div></section></main>';
+  return '<main class="ct-auth-shell ct-auth-restoring" aria-busy="true"><section class="ct-auth-card"><div class="ct-auth-brand"><div class="ct-auth-title">VNN <span>♡</span></div><div class="ct-auth-subtitle">СЕМЕЙНЫЙ БЮДЖЕТ</div></div><div class="ct-auth-restoring-mark">♡</div></section></main>';
 }
 render = function () {
   setDoc();
   if (!sync.connected) {
     modal.open && modal.close();
+    document.querySelector('.onboarding')?.remove();
     app.innerHTML = authRestorePending ? authRestoreScreen() : authScreen();
     return;
   }
@@ -493,7 +694,7 @@ document.addEventListener('click', event => {
 
 document.addEventListener('click', event => {
   const onboard = event.target.closest('[data-onboard="done"]');
-  if (onboard && sync.actor) localStorage.setItem(`ninochka-onboarding-${sync.actor}`, '1');
+  if (onboard && sync.actor) localStorage.setItem(`vnn-next-onboarding-${sync.actor}`, '1');
 }, true);
 
 if (SYNC_API && sync.token && localStorage.getItem(SYNC_READY) === '1') {

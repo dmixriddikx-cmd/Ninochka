@@ -1,0 +1,86 @@
+name: Verify Ninochka expense inbox
+
+on:
+  push:
+    branches: ["feature/charlie-expense-inbox-20261015"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-inbox:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned backend dependencies
+        run: npm ci --prefix sync-service --ignore-scripts
+      - name: Static JavaScript verification
+        run: |
+          node --check sync-service/api/inbox.js
+          node --check scripts/import-private-inbox.mjs
+          node --check sync-service/api/recognize.js
+          node --check sync-service/lib/recognition.js
+          node --check v4/app-scan.js
+          node --check sync-service/api/sync.js
+          node --check tests-sync-lock.mjs
+          node --check sync-service/lib/quick-entry.js
+          node --check sync-service/lib/transaction-status.js
+          node --check sync-service/lib/token-auth.js
+          node --check sync-service/lib/blob-store.js
+          node --check v4/app-quick.js
+          node --check v4/app-inbox.js
+          cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js v4/app-inbox.js v4/app-quick.js v4/app-scan.js > app.js
+          node --check app.js
+      - name: Budget invariants and UI smoke tests
+        run: |
+          node tests-inbox.mjs
+          node tests-inbox-dedupe.mjs
+          node tests-inbox-validation.mjs
+          node tests-inbox-race.mjs
+          node tests-scan-batch.mjs
+          node tests-scan-local.mjs
+          node tests-importer.mjs
+          node tests-transaction-status.mjs
+          node tests-recognition.mjs
+          node tests-auth.mjs
+          npm test --prefix sync-service
+          node tests-sync-browser.mjs
+          node tests-release-route.mjs
+          node tests-production-backup.mjs
+          node --experimental-test-module-mocks tests-api-recognition.mjs
+          node --test sync-service/quick-entry.test.mjs
+          node tests-v4.mjs
+          mkdir -p _site
+          cp index.html contract.css core.js corefix.js sync-config.js app.js _site/
+          cp sw.js _site/
+          cp -r assets _site/
+          cp manifest.webmanifest _site/
+          python -m pip install --disable-pip-version-check --quiet 'CairoSVG==2.8.2'
+          python scripts/build-vnn-icons.py _site
+          test -s _site/assets/vnn-icon-180.png
+          test -s _site/assets/vnn-icon-192.png
+          test -s _site/assets/vnn-icon-512.png
+          node tests-ui-contract.mjs _site
+          node tests-ui-runtime.mjs _site
+      - name: Mobile synthetic browser verification
+        run: |
+          npm ci --prefix tools/browser --ignore-scripts
+          cd tools/browser
+          npx playwright install --with-deps chromium
+          npm test
+          npm run capture:visual
+      - name: Upload synthetic visual evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: vnn-visual-${{ github.sha }}
+          path: _visual
+          if-no-files-found: error
+          retention-days: 7
