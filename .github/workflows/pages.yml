@@ -46,7 +46,7 @@ jobs:
           cp core.js corefix.js sync-config.js _site/
           cat contract.css v2.css > _site/contract.css
           cp -r assets/* _site/assets/
-          cp manifest.webmanifest _site/
+          cp manifest.webmanifest refresh.html _site/
           python -m pip install --disable-pip-version-check --quiet 'CairoSVG==2.8.2'
           python scripts/build-vnn-icons.py _site
           cat v4/app-00.js v4/app-01.js v4/app-02.js v4/app-03.js v4/app-04.js v4/app-05.js v4/app-contract.js v4/app-sync.js v4/app-inbox.js v4/app-quick.js v4/app-scan.js v4/app-ux-v2.js > _site/app.js
@@ -77,6 +77,8 @@ jobs:
           node tests-ui-runtime.mjs _site
           node tests-v2-release.mjs _site
 
+          test -s _site/refresh.html
+          grep -q 'new version' _site/refresh.html || grep -q 'function v2AddPage' _site/refresh.html
           test -s _site/index.html
           test -s _site/manifest.webmanifest
           test -s _site/assets/vnn-icon-180.png
