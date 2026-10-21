@@ -53,11 +53,11 @@ for (const key of ['--approved-dark-hero', '--approved-light-home', '--ct-storag
   if (!cssVariables.get(key)?.startsWith('url(')) throw new Error(`UI runtime did not decode ${key}`);
 }
 
-// An installed shortcut must refresh in place without clearing locally stored data.
+// An installed shortcut must reach the independent recovery route without clearing local data.
 const update = clickHandlers.find(handler => handler.toString().includes("'[data-app-update]'"));
 if (!update) throw new Error('UI runtime version update handler is missing');
 let destination = '';
-globalThis.location = { href:'https://example.test/Ninochka/', replace(url){ destination = url; } };
+globalThis.location = { href:'https://example.test/Ninochka/', assign(url){ destination = url; } };
 localStorage.setItem('budget-sentinel','keep-me');
 const button = () => ({
   disabled:false, textContent:'↻ Обновить версию',
@@ -68,7 +68,7 @@ const click = node => ({
   preventDefault(){}, stopImmediatePropagation(){}
 });
 await update(click(button()));
-if (!destination.includes('vnn_updated=new-release')) throw new Error('UI runtime did not reload the installed app');
+if (!destination.startsWith('https://example.test/Ninochka/refresh.html?from_app=')) throw new Error('UI runtime did not open recovery');
 if (localStorage.getItem('budget-sentinel') !== 'keep-me') throw new Error('UI runtime erased local data on update');
 destination = '';
 localStorage.setItem('ninochka-sync-dirty','1');
