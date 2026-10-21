@@ -163,6 +163,35 @@ if (globalThis.navigator?.serviceWorker && globalThis.isSecureContext) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
 }
 
+// The version signal is deliberately outside the service worker's cache route.
+// A clean installation can follow new releases without clearing Safari data.
+let releaseCheckInFlight = false;
+async function checkVnnRelease() {
+  const current = document.querySelector('meta[name="vnn-build"]')?.content;
+  if (!current || current === '__BUILD_ID__' || releaseCheckInFlight ||
+      document.activeElement?.matches?.('input, textarea, select, [contenteditable]') || modal.open ||
+      sync.dirty || sync.busy || sync.paused || localStorage.getItem(SYNC_DIRTY) === '1') return;
+  releaseCheckInFlight = true;
+  try {
+    const signal = new URL('./version.json', location.href);
+    signal.searchParams.set('check', String(Date.now()));
+    const response = await fetch(signal.href, {cache:'no-store', credentials:'same-origin'});
+    if (!response.ok) return;
+    const {build} = await response.json();
+    if (!/^[a-f0-9]{7,40}$/.test(build) || build === current) return;
+    if (new URL(location.href).searchParams.get('vnn_release') === build) return;
+    try {
+      const registration = await navigator.serviceWorker?.getRegistration('./');
+      await registration?.update();
+    } catch { /* The navigation still checks the network for the new shell. */ }
+    const next = new URL('./', location.href);
+    next.searchParams.set('vnn_release', build);
+    next.searchParams.set('t', String(Date.now()));
+    location.replace(next.href);
+  } catch { /* Offline: keep the current local copy and retry on the next visit. */ }
+  finally { releaseCheckInFlight = false; }
+}
+
 // Open the independent recovery page, outside the service worker's shell routing.
 // It checks pending writes again before touching only public shell caches.
 document.addEventListener('click', async event => {
@@ -730,3 +759,7 @@ if (SYNC_API) {
   globalThis.addEventListener?.('online', () => refreshSync());
   globalThis.addEventListener?.('focus', () => refreshSync());
 }
+setTimeout(checkVnnRelease, 2000);
+setInterval(() => { if (!document.hidden) checkVnnRelease(); }, 300000);
+globalThis.addEventListener?.('pageshow', checkVnnRelease);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVnnRelease(); });

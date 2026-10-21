@@ -28,7 +28,7 @@ a.go{color:var(--text);border:1px solid #4d4657;margin-top:12px}
 <main>
 <mark>VNN ♡</mark>
 <h1>Обновление для Safari</h1>
-<p>Обновляем только загруженные файлы интерфейса, чтобы Safari открыл актуальную VNN.</p>
+<p>Проверяем актуальную версию и обновляем файлы интерфейса без очистки Safari.</p>
 <p><small>Баланс, история операций, сохранённый вход и данные в <b>localStorage</b> не удаляются.</small></p>
 <label class="check" id="dirty-warning" hidden><input id="backup-confirm" type="checkbox"><span>В Safari есть ожидающие отправки изменения. Я заранее сохранил(а) локальную копию через «Ещё → Скачать копию» и хочу обновить интерфейс.</span></label>
 <button id="refresh" type="button">Обновить VNN</button>
@@ -54,28 +54,21 @@ a.go{color:var(--text);border:1px solid #4d4657;margin-top:12px}
     button.disabled=true;
     status.textContent='Проверяю доступность новой версии…';
     try{
-      const request=new URL('./app.js',location.href);
-      request.searchParams.set('safari_refresh',String(Date.now()));
+      const request=new URL('./version.json',location.href);
+      request.searchParams.set('check',String(Date.now()));
       const response=await fetch(request.href,{cache:'no-store',credentials:'same-origin'});
       if(!response.ok)throw new Error('Версия ещё недоступна ('+response.status+').');
-      const code=await response.text();
-      if(!code.includes('function v2AddPage')||!code.includes('ct-v2-weekgrid'))throw new Error('На сервере пока старая версия. Повтори позже.');
-      status.textContent='Новая версия найдена. Обновляю файлы интерфейса…';
+      const {build}=await response.json();
+      if(!/^[a-f0-9]{7,40}$/.test(build))throw new Error('Номер версии недоступен. Повтори позже.');
+      status.textContent='Версия '+build+' найдена. Обновляю интерфейс…';
       if('serviceWorker' in navigator) {
-        const registrations=await navigator.serviceWorker.getRegistrations();
-        for(const registration of registrations) {
-          if(registration.scope===scope)await registration.unregister();
-        }
-      }
-      if('caches' in window){
-        const names=await caches.keys();
-        for(const name of names){
-          if(name.startsWith('vnn-shell-')||name.startsWith('vnn-next-shell-')) await caches.delete(name);
-        }
+        const registration=await navigator.serviceWorker.getRegistration(scope);
+        if(registration)await registration.update();
       }
       status.textContent='Готово. Открываю VNN…';
       const next=new URL('./',location.href);
-      next.searchParams.set('safari_updated',String(Date.now()));
+      next.searchParams.set('vnn_release',build);
+      next.searchParams.set('t',String(Date.now()));
       location.replace(next.href);
     }catch(error){
       status.textContent='Не удалось обновить: '+(error?.message||String(error))+'. Локальные данные не затронуты.';

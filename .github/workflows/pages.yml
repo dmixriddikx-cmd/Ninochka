@@ -43,6 +43,7 @@ jobs:
           BUILD_ID="$(git rev-parse --short HEAD)"
           sed "s/__BUILD_ID__/${BUILD_ID}/g" index.html > _site/index.html
           sed "s/__BUILD_ID__/${BUILD_ID}/g" sw.js > _site/sw.js
+          printf '{"build":"%s"}\n' "$BUILD_ID" > _site/version.json
           cp core.js corefix.js sync-config.js _site/
           cat contract.css v2.css vnn-scenes.css > _site/contract.css
           cp -r assets/* _site/assets/
@@ -72,6 +73,7 @@ jobs:
           node tests-auth.mjs
           npm test --prefix sync-service
           node tests-sync-browser.mjs
+          node tests-safari-update.mjs
           node tests-production-backup.mjs
           node --check sync-service/lib/token-auth.js
           node --experimental-test-module-mocks tests-api-recognition.mjs
@@ -81,8 +83,9 @@ jobs:
           node tests-v2-release.mjs _site
 
           test -s _site/refresh.html
-          grep -q 'new version' _site/refresh.html || grep -q 'function v2AddPage' _site/refresh.html
+          grep -q 'version.json' _site/refresh.html
           test -s _site/index.html
+          test -s _site/version.json
           test -s _site/manifest.webmanifest
           test -s _site/assets/vnn-icon-180.png
           test -s _site/assets/vnn-icon-192.png

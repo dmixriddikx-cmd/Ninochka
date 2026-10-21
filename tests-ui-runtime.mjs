@@ -10,6 +10,7 @@ const modal = { open: false, innerHTML: '', querySelector: () => null, showModal
 const cssVariables = new Map();
 const clickHandlers = [];
 const root = { dataset: {}, style: { setProperty(key, value){ cssVariables.set(key, value); } }, setAttribute(){}, lang: 'ru' };
+globalThis.setInterval = () => 0;
 
 globalThis.localStorage = new Map();
 globalThis.localStorage.getItem = globalThis.localStorage.get.bind(globalThis.localStorage);
