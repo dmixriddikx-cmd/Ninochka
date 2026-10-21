@@ -258,7 +258,7 @@ function syncBanner() {
   return sync.paused
     ? '<div class="ct-sync-banner">Есть конфликт изменений. Местная копия сохранена. Открой «Ещё» и скачай её перед переходом к общей версии.</div>'
     : sync.connected && sync.error
-      ? '<div class="ct-sync-banner">Нет связи с общим бюджетом. Новые изменения сохранены здесь и будут отправлены после восстановления связи.</div>'
+      ? '<div class="ct-sync-banner">Нет связи с общим бюджетом. Новые изменения сохранены здесь и будут отправлены после восстановления связи. <button type="button" class="ct-sync-retry" data-sync="refresh">Повторить связь ↻</button></div>'
       : '';
 }
 
@@ -762,6 +762,10 @@ if (SYNC_API && sync.token && localStorage.getItem(SYNC_READY) === '1') {
   render();
 }
 if (SYNC_API) {
-  setInterval(() => { if (!document.hidden) refreshSync(); }, 30000);
+  // Installed iOS web apps may resume without a visibilitychange event.
+  setInterval(() => { if (sync.error || !document.hidden) refreshSync(); }, 30000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshSync(); });
+  globalThis.addEventListener?.('pageshow', () => refreshSync());
+  globalThis.addEventListener?.('online', () => refreshSync());
+  globalThis.addEventListener?.('focus', () => refreshSync());
 }
